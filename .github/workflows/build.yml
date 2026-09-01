@@ -1,0 +1,36 @@
+name: Build ArcSpace
+
+on:
+  push:
+    branches: [main, "codex/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore src/ArcSpace/ArcSpace.csproj
+
+      - name: Build
+        run: dotnet build src/ArcSpace/ArcSpace.csproj -c Release --no-restore
+
+      - name: Publish portable EXE
+        run: dotnet publish src/ArcSpace/ArcSpace.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+
+      - name: Upload ArcSpace EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArcSpace-win-x64
+          path: publish/ArcSpace.exe
+          if-no-files-found: error
