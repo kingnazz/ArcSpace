@@ -3,6 +3,8 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 using ArcSpace.Models;
 using ArcSpace.Services;
 using Microsoft.Win32;
@@ -12,14 +14,26 @@ namespace ArcSpace;
 public partial class MainWindow : Window
 {
     private readonly List<ScanItem> _largestFiles = [];
+    private readonly Stopwatch _scanStopwatch = new();
+    private readonly DispatcherTimer _statusTimer;
     private CancellationTokenSource? _scanCancellation;
     private string _scanPath = string.Empty;
+    private long _minimumFileSizeBytes;
+    private long _latestFilesScanned;
+    private long _latestDirectoriesScanned;
+    private long _latestSkippedEntries;
 
     public MainWindow()
     {
         InitializeComponent();
+
+        _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _statusTimer.Tick += (_, _) => UpdateStatusDetails();
+
         PopulateDrives();
-        PopulateLargestFileFilters();
+        SelectFileFilter(FilterAllButton, 0);
+        SetScanVisualState(ScanVisualState.Ready);
+        UpdateStatusDetails();
     }
 
     private void PopulateDrives()
@@ -48,18 +62,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void PopulateLargestFileFilters()
-    {
-        LargestFilterCombo.ItemsSource = new List<FileSizeFilter>
-        {
-            new("All files", 0),
-            new("> 100 MB", 100L * 1024 * 1024),
-            new("> 500 MB", 500L * 1024 * 1024),
-            new("> 1 GB", 1024L * 1024 * 1024)
-        };
-        LargestFilterCombo.SelectedIndex = 0;
-    }
-
     private async void ScanButton_Click(object sender, RoutedEventArgs e)
     {
         await StartScanAsync();
@@ -75,45 +77,91 @@ public partial class MainWindow : Window
 
         _scanCancellation?.Dispose();
         _scanCancellation = new CancellationTokenSource();
-        SetScanningState(true);
-        FolderTree.ItemsSource = null;
+
+        _latestFilesScanned = 0;
+        _latestDirectoriesScanned = 0;
+        _latestSkippedEntries = 0;
         _largestFiles.Clear();
+        FolderTree.ItemsSource = null;
         LargestFilesGrid.ItemsSource = null;
+        FilesScannedText.Text = "0";
+        DirectoriesScannedText.Text = "0 folders";
+        SkippedText.Text = "0";
+        FolderEmptyState.Visibility = Visibility.Collapsed;
+        FilesEmptyState.Visibility = Visibility.Visible;
+        FilesEmptyTitle.Text = "Scanning drive…";
+        FilesEmptySubtitle.Text = "Large files will appear when the scan completes.";
+
+        SetScanningState(true);
+        SetScanVisualState(ScanVisualState.Scanning);
+        StatusText.Text = $"Scanning {_scanPath}";
+        _scanStopwatch.Restart();
+        _statusTimer.Start();
+        UpdateStatusDetails();
 
         var scanner = new DiskScanner();
         var progress = new Progress<ScanProgress>(p =>
         {
-            StatusText.Text = $"Scanning {p.FilesScanned:N0} files, {p.DirectoriesScanned:N0} folders  •  {ScanItem.FormatBytes(p.BytesScanned)}  •  {p.CurrentPath}";
+            _latestFilesScanned = p.FilesScanned;
+            _latestDirectoriesScanned = p.DirectoriesScanned;
+            _latestSkippedEntries = p.SkippedEntries;
+
+            FilesScannedText.Text = p.FilesScanned.ToString("N0");
+            DirectoriesScannedText.Text = $"{p.DirectoriesScanned:N0} folders";
+            SkippedText.Text = p.SkippedEntries.ToString("N0");
+            StatusText.Text = $"Scanning  ·  {p.CurrentPath}";
+            UpdateStatusDetails();
         });
 
         try
         {
             var result = await scanner.ScanAsync(_scanPath, progress, _scanCancellation.Token);
             FolderTree.ItemsSource = new[] { result.Root };
+            FolderEmptyState.Visibility = Visibility.Collapsed;
+
             _largestFiles.AddRange(result.LargestFiles);
             ApplyLargestFileFilter();
 
-            StatusText.Text = $"Complete  •  {result.Root.FileCount:N0} files  •  {result.Root.SizeDisplay}  •  {result.SkippedEntries:N0} inaccessible/reparse entries skipped";
+            _latestFilesScanned = result.Root.FileCount;
+            _latestSkippedEntries = result.SkippedEntries;
+            FilesScannedText.Text = result.Root.FileCount.ToString("N0");
+            SkippedText.Text = result.SkippedEntries.ToString("N0");
+
+            StatusText.Text = $"Scan complete  ·  {result.Root.SizeDisplay} analyzed";
+            SetScanVisualState(ScanVisualState.Complete);
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Scan cancelled.";
+            StatusText.Text = "Scan cancelled";
+            FolderEmptyState.Visibility = FolderTree.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            FilesEmptyTitle.Text = "Scan cancelled";
+            FilesEmptySubtitle.Text = "Start another scan when you are ready.";
+            FilesEmptyState.Visibility = _largestFiles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            SetScanVisualState(ScanVisualState.Cancelled);
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Scan failed.";
+            StatusText.Text = "Scan failed";
+            FolderEmptyState.Visibility = Visibility.Visible;
+            FilesEmptyTitle.Text = "Scan could not complete";
+            FilesEmptySubtitle.Text = "Review the error and try again.";
+            FilesEmptyState.Visibility = Visibility.Visible;
+            SetScanVisualState(ScanVisualState.Error);
             MessageBox.Show(this, ex.Message, "ArcSpace scan error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
+            _scanStopwatch.Stop();
+            _statusTimer.Stop();
             SetScanningState(false);
+            UpdateStatusDetails();
         }
     }
 
     private void StopButton_Click(object sender, RoutedEventArgs e)
     {
         _scanCancellation?.Cancel();
-        StatusText.Text = "Stopping scan...";
+        StatusText.Text = "Stopping scan…";
     }
 
     private void ChooseFolder_Click(object sender, RoutedEventArgs e)
@@ -166,15 +214,19 @@ public partial class MainWindow : Window
             var used = drive.TotalSize - drive.AvailableFreeSpace;
             var percent = drive.TotalSize <= 0 ? 0 : (double)used / drive.TotalSize * 100d;
 
-            DiskSummaryText.Text = $"{drive.Name}  {ScanItem.FormatBytes(used)} used of {ScanItem.FormatBytes(drive.TotalSize)}  •  {ScanItem.FormatBytes(drive.AvailableFreeSpace)} free";
-            DiskPercentText.Text = $"{percent:0.#}% used";
+            DiskSummaryText.Text = $"{drive.Name}  {ScanItem.FormatBytes(used)} of {ScanItem.FormatBytes(drive.TotalSize)} used";
+            DiskPercentText.Text = $"{percent:0.#}%";
             DiskUsageBar.Value = Math.Clamp(percent, 0, 100);
+            UsedSpaceText.Text = ScanItem.FormatBytes(used);
+            FreeSpaceText.Text = ScanItem.FormatBytes(drive.AvailableFreeSpace);
         }
         catch
         {
             DiskSummaryText.Text = "Folder scan";
             DiskPercentText.Text = string.Empty;
             DiskUsageBar.Value = 0;
+            UsedSpaceText.Text = "—";
+            FreeSpaceText.Text = "—";
         }
     }
 
@@ -183,20 +235,104 @@ public partial class MainWindow : Window
         ScanButton.IsEnabled = !isScanning;
         StopButton.IsEnabled = isScanning;
         DriveCombo.IsEnabled = !isScanning;
+        ScanActivityBar.Visibility = isScanning ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void LargestFilterCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void SetScanVisualState(ScanVisualState state)
     {
+        switch (state)
+        {
+            case ScanVisualState.Scanning:
+                ScanStateText.Text = "SCANNING";
+                ScanStateBadge.Background = ResourceBrush("AccentSoftBrush");
+                ScanStateText.Foreground = ResourceBrush("AccentBrush");
+                StatusDot.Fill = ResourceBrush("AccentBrush");
+                break;
+            case ScanVisualState.Complete:
+                ScanStateText.Text = "COMPLETE";
+                ScanStateBadge.Background = ResourceBrush("SuccessSoftBrush");
+                ScanStateText.Foreground = ResourceBrush("SuccessBrush");
+                StatusDot.Fill = ResourceBrush("SuccessBrush");
+                break;
+            case ScanVisualState.Cancelled:
+                ScanStateText.Text = "CANCELLED";
+                ScanStateBadge.Background = ResourceBrush("SurfaceMutedBrush");
+                ScanStateText.Foreground = ResourceBrush("TextSecondaryBrush");
+                StatusDot.Fill = ResourceBrush("TextTertiaryBrush");
+                break;
+            case ScanVisualState.Error:
+                ScanStateText.Text = "ERROR";
+                ScanStateBadge.Background = ResourceBrush("DangerSoftBrush");
+                ScanStateText.Foreground = ResourceBrush("DangerBrush");
+                StatusDot.Fill = ResourceBrush("DangerBrush");
+                break;
+            default:
+                ScanStateText.Text = "READY";
+                ScanStateBadge.Background = ResourceBrush("SuccessSoftBrush");
+                ScanStateText.Foreground = ResourceBrush("SuccessBrush");
+                StatusDot.Fill = ResourceBrush("SuccessBrush");
+                break;
+        }
+    }
+
+    private Brush ResourceBrush(string key) => (Brush)FindResource(key);
+
+    private void UpdateStatusDetails()
+    {
+        var elapsed = _scanStopwatch.Elapsed;
+        var time = elapsed.TotalHours >= 1
+            ? $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}"
+            : $"{elapsed.Minutes:00}:{elapsed.Seconds:00}";
+
+        StatusDetailsText.Text = $"{_latestFilesScanned:N0} files  ·  {_latestDirectoriesScanned:N0} folders  ·  {time}";
+    }
+
+    private void FilterAll_Click(object sender, RoutedEventArgs e) => SelectFileFilter(FilterAllButton, 0);
+
+    private void Filter100_Click(object sender, RoutedEventArgs e) => SelectFileFilter(Filter100Button, 100L * 1024 * 1024);
+
+    private void Filter500_Click(object sender, RoutedEventArgs e) => SelectFileFilter(Filter500Button, 500L * 1024 * 1024);
+
+    private void Filter1Gb_Click(object sender, RoutedEventArgs e) => SelectFileFilter(Filter1GbButton, 1024L * 1024 * 1024);
+
+    private void SelectFileFilter(Button activeButton, long minimumBytes)
+    {
+        _minimumFileSizeBytes = minimumBytes;
+
+        foreach (var button in new[] { FilterAllButton, Filter100Button, Filter500Button, Filter1GbButton })
+        {
+            button.Style = (Style)FindResource(button == activeButton ? "ActiveFilterButtonStyle" : "FilterButtonStyle");
+        }
+
+        Filter1GbButton.Margin = new Thickness(0);
         ApplyLargestFileFilter();
     }
 
     private void ApplyLargestFileFilter()
     {
-        var minimum = (LargestFilterCombo.SelectedItem as FileSizeFilter)?.MinimumBytes ?? 0;
-        LargestFilesGrid.ItemsSource = _largestFiles
-            .Where(f => f.SizeBytes >= minimum)
+        var filtered = _largestFiles
+            .Where(f => f.SizeBytes >= _minimumFileSizeBytes)
             .OrderByDescending(f => f.SizeBytes)
             .ToList();
+
+        LargestFilesGrid.ItemsSource = filtered;
+
+        if (_scanCancellation is not null && _scanCancellation.IsCancellationRequested)
+        {
+            return;
+        }
+
+        FilesEmptyState.Visibility = filtered.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (filtered.Count == 0 && _largestFiles.Count > 0)
+        {
+            FilesEmptyTitle.Text = "No files match this filter";
+            FilesEmptySubtitle.Text = "Try a lower size threshold.";
+        }
+        else if (filtered.Count == 0)
+        {
+            FilesEmptyTitle.Text = "No large files found";
+            FilesEmptySubtitle.Text = "This scan did not return any files for the list.";
+        }
     }
 
     private void OpenFolderItem_Click(object sender, RoutedEventArgs e)
@@ -356,11 +492,20 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _statusTimer.Stop();
         _scanCancellation?.Cancel();
         _scanCancellation?.Dispose();
         base.OnClosed(e);
     }
 
+    private enum ScanVisualState
+    {
+        Ready,
+        Scanning,
+        Complete,
+        Cancelled,
+        Error
+    }
+
     private sealed record DriveChoice(string RootPath, string Display);
-    private sealed record FileSizeFilter(string Display, long MinimumBytes);
 }
