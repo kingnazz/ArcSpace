@@ -7,8 +7,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>ArcSpace</AssemblyName>
     <RootNamespace>ArcSpace</RootNamespace>
-    <Version>1.2.0</Version>
-    <FileVersion>1.2.0.0</FileVersion>
+    <Version>1.3.0</Version>
+    <FileVersion>1.3.0.0</FileVersion>
     <ApplicationIcon Condition="Exists('Assets\\ArcSpace.ico')">Assets\ArcSpace.ico</ApplicationIcon>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
