@@ -16,6 +16,7 @@ public partial class MainWindow
     {
         base.OnContentRendered(e);
         InstallUpdateControls();
+        UpdateVisibleVersionLabel();
 
         if (_updateSettings.CheckForUpdatesOnLaunch)
         {
@@ -57,6 +58,29 @@ public partial class MainWindow
             Grid.SetRow(_updatesButton, 2);
             Panel.SetZIndex(_updatesButton, 20);
             root.Children.Add(_updatesButton);
+        }
+    }
+
+    private void UpdateVisibleVersionLabel()
+    {
+        var version = GitHubUpdateService.CurrentVersion;
+        var label = $"   ArcSpace v{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
+        UpdateVersionTextRecursive(this, label);
+    }
+
+    private static void UpdateVersionTextRecursive(DependencyObject parent, string versionLabel)
+    {
+        var childCount = VisualTreeHelper.GetChildrenCount(parent);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = VisualTreeHelper.GetChild(parent, i);
+            if (child is TextBlock textBlock && textBlock.Text.TrimStart().StartsWith("ArcSpace v", StringComparison.Ordinal))
+            {
+                textBlock.Text = versionLabel;
+                return;
+            }
+
+            UpdateVersionTextRecursive(child, versionLabel);
         }
     }
 
