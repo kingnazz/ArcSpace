@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using ArcSpace.Models;
 
@@ -6,11 +7,14 @@ namespace ArcSpace.Services;
 public sealed class DiskScanner
 {
     private const int LargestFileLimit = 100;
+    private const int ProgressIntervalMilliseconds = 125;
+
     private long _filesScanned;
     private long _directoriesScanned;
     private long _skippedEntries;
     private long _bytesScanned;
     private PriorityQueue<ScanItem, long> _largestFiles = new();
+    private readonly Stopwatch _progressStopwatch = new();
 
     public async Task<ScanResult> ScanAsync(
         string rootPath,
@@ -22,22 +26,17 @@ public sealed class DiskScanner
             ResetCounters();
 
             var normalizedPath = Path.GetFullPath(rootPath);
-            var root = ScanDirectory(normalizedPath, progress, cancellationToken);
+            var root = ScanDirectory(new DirectoryInfo(normalizedPath), progress, cancellationToken);
             var largest = DrainLargestFiles();
 
-            progress?.Report(new ScanProgress(
-                _filesScanned,
-                _directoriesScanned,
-                _skippedEntries,
-                _bytesScanned,
-                normalizedPath));
+            ReportProgress(progress, normalizedPath, force: true);
 
             return new ScanResult(root, largest, _skippedEntries);
         }, cancellationToken);
     }
 
     private ScanItem ScanDirectory(
-        string path,
+        DirectoryInfo directory,
         IProgress<ScanProgress>? progress,
         CancellationToken cancellationToken)
     {
@@ -46,10 +45,9 @@ public sealed class DiskScanner
 
         var directoryItem = new ScanItem
         {
-            Name = GetDisplayName(path),
-            FullPath = path,
-            IsDirectory = true,
-            LastModified = SafeGetLastWriteTime(path)
+            Name = GetDisplayName(directory.FullName),
+            FullPath = directory.FullName,
+            IsDirectory = true
         };
 
         var childDirectories = new List<ScanItem>();
@@ -63,55 +61,35 @@ public sealed class DiskScanner
                 IgnoreInaccessible = true,
                 RecurseSubdirectories = false,
                 ReturnSpecialDirectories = false,
-                AttributesToSkip = FileAttributes.ReparsePoint
+                AttributesToSkip = FileAttributes.ReparsePoint,
+                BufferSize = 64 * 1024
             };
 
-            foreach (var entry in Directory.EnumerateFileSystemEntries(path, "*", options))
+            foreach (var entry in directory.EnumerateFileSystemInfos("*", options))
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
                 try
                 {
-                    var attributes = File.GetAttributes(entry);
-                    if ((attributes & FileAttributes.ReparsePoint) != 0)
+                    if (entry is DirectoryInfo childDirectory)
                     {
-                        _skippedEntries++;
+                        childDirectories.Add(ScanDirectory(childDirectory, progress, cancellationToken));
                         continue;
                     }
 
-                    if ((attributes & FileAttributes.Directory) != 0)
+                    if (entry is not FileInfo file)
                     {
-                        var child = ScanDirectory(entry, progress, cancellationToken);
-                        childDirectories.Add(child);
                         continue;
                     }
 
-                    var info = new FileInfo(entry);
-                    var size = info.Length;
+                    var size = file.Length;
                     directFileBytes += size;
                     directFileCount++;
                     _filesScanned++;
                     _bytesScanned += size;
 
-                    TrackLargeFile(new ScanItem
-                    {
-                        Name = info.Name,
-                        FullPath = info.FullName,
-                        SizeBytes = size,
-                        FileCount = 1,
-                        IsDirectory = false,
-                        LastModified = info.LastWriteTime
-                    });
-
-                    if ((_filesScanned & 511) == 0)
-                    {
-                        progress?.Report(new ScanProgress(
-                            _filesScanned,
-                            _directoriesScanned,
-                            _skippedEntries,
-                            _bytesScanned,
-                            entry));
-                    }
+                    TrackLargeFile(file, size);
+                    ReportProgress(progress, file.FullName);
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -140,40 +118,67 @@ public sealed class DiskScanner
             _skippedEntries++;
         }
 
-        foreach (var child in childDirectories.OrderByDescending(x => x.SizeBytes))
+        childDirectories.Sort(static (a, b) => b.SizeBytes.CompareTo(a.SizeBytes));
+
+        long childBytes = 0;
+        long childFileCount = 0;
+        foreach (var child in childDirectories)
         {
+            childBytes += child.SizeBytes;
+            childFileCount += child.FileCount;
             directoryItem.Children.Add(child);
         }
 
-        directoryItem.SizeBytes = directFileBytes + childDirectories.Sum(x => x.SizeBytes);
-        directoryItem.FileCount = directFileCount + childDirectories.Sum(x => x.FileCount);
+        directoryItem.SizeBytes = directFileBytes + childBytes;
+        directoryItem.FileCount = directFileCount + childFileCount;
 
-        if ((_directoriesScanned & 127) == 0)
-        {
-            progress?.Report(new ScanProgress(
-                _filesScanned,
-                _directoriesScanned,
-                _skippedEntries,
-                _bytesScanned,
-                path));
-        }
-
+        ReportProgress(progress, directory.FullName);
         return directoryItem;
     }
 
-    private void TrackLargeFile(ScanItem item)
+    private void TrackLargeFile(FileInfo file, long size)
     {
-        if (_largestFiles.Count < LargestFileLimit)
+        if (_largestFiles.Count >= LargestFileLimit)
         {
-            _largestFiles.Enqueue(item, item.SizeBytes);
+            if (!_largestFiles.TryPeek(out _, out var smallestSize) || size <= smallestSize)
+            {
+                return;
+            }
+
+            _largestFiles.Dequeue();
+        }
+
+        _largestFiles.Enqueue(new ScanItem
+        {
+            Name = file.Name,
+            FullPath = file.FullName,
+            SizeBytes = size,
+            FileCount = 1,
+            IsDirectory = false,
+            LastModified = SafeGetLastWriteTime(file)
+        }, size);
+    }
+
+    private void ReportProgress(IProgress<ScanProgress>? progress, string currentPath, bool force = false)
+    {
+        if (progress is null)
+        {
             return;
         }
 
-        if (_largestFiles.TryPeek(out _, out var smallestSize) && item.SizeBytes > smallestSize)
+        if (!force && _progressStopwatch.ElapsedMilliseconds < ProgressIntervalMilliseconds)
         {
-            _largestFiles.Dequeue();
-            _largestFiles.Enqueue(item, item.SizeBytes);
+            return;
         }
+
+        progress.Report(new ScanProgress(
+            _filesScanned,
+            _directoriesScanned,
+            _skippedEntries,
+            _bytesScanned,
+            currentPath));
+
+        _progressStopwatch.Restart();
     }
 
     private IReadOnlyList<ScanItem> DrainLargestFiles()
@@ -184,7 +189,7 @@ public sealed class DiskScanner
             files.Add(item);
         }
 
-        files.Sort((a, b) => b.SizeBytes.CompareTo(a.SizeBytes));
+        files.Sort(static (a, b) => b.SizeBytes.CompareTo(a.SizeBytes));
         return files;
     }
 
@@ -195,6 +200,7 @@ public sealed class DiskScanner
         _skippedEntries = 0;
         _bytesScanned = 0;
         _largestFiles = new PriorityQueue<ScanItem, long>();
+        _progressStopwatch.Restart();
     }
 
     private static string GetDisplayName(string path)
@@ -204,11 +210,11 @@ public sealed class DiskScanner
         return string.IsNullOrWhiteSpace(name) ? Path.GetPathRoot(path) ?? path : name;
     }
 
-    private static DateTime SafeGetLastWriteTime(string path)
+    private static DateTime SafeGetLastWriteTime(FileInfo file)
     {
         try
         {
-            return Directory.GetLastWriteTime(path);
+            return file.LastWriteTime;
         }
         catch
         {
