@@ -22,10 +22,12 @@ public partial class MainWindow : Window
     private long _latestFilesScanned;
     private long _latestDirectoriesScanned;
     private long _latestSkippedEntries;
+    private long _latestBytesScanned;
 
     public MainWindow()
     {
         InitializeComponent();
+        SetVersionLabel();
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _statusTimer.Tick += (_, _) => UpdateStatusDetails();
@@ -34,6 +36,14 @@ public partial class MainWindow : Window
         SelectFileFilter(FilterAllButton, 0);
         SetScanVisualState(ScanVisualState.Ready);
         UpdateStatusDetails();
+    }
+
+    private void SetVersionLabel()
+    {
+        var version = typeof(MainWindow).Assembly.GetName().Version;
+        VersionText.Text = version is null
+            ? "ArcSpace"
+            : $"ArcSpace v{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
     }
 
     private void PopulateDrives()
@@ -81,6 +91,7 @@ public partial class MainWindow : Window
         _latestFilesScanned = 0;
         _latestDirectoriesScanned = 0;
         _latestSkippedEntries = 0;
+        _latestBytesScanned = 0;
         _largestFiles.Clear();
         FolderTree.ItemsSource = null;
         LargestFilesGrid.ItemsSource = null;
@@ -90,7 +101,7 @@ public partial class MainWindow : Window
         FolderEmptyState.Visibility = Visibility.Collapsed;
         FilesEmptyState.Visibility = Visibility.Visible;
         FilesEmptyTitle.Text = "Scanning drive…";
-        FilesEmptySubtitle.Text = "Large files will appear when the scan completes.";
+        FilesEmptySubtitle.Text = "Largest files will appear here live as they are discovered.";
 
         SetScanningState(true);
         SetScanVisualState(ScanVisualState.Scanning);
@@ -105,11 +116,20 @@ public partial class MainWindow : Window
             _latestFilesScanned = p.FilesScanned;
             _latestDirectoriesScanned = p.DirectoriesScanned;
             _latestSkippedEntries = p.SkippedEntries;
+            _latestBytesScanned = p.BytesScanned;
 
             FilesScannedText.Text = p.FilesScanned.ToString("N0");
             DirectoriesScannedText.Text = $"{p.DirectoriesScanned:N0} folders";
             SkippedText.Text = p.SkippedEntries.ToString("N0");
             StatusText.Text = $"Scanning  ·  {p.CurrentPath}";
+
+            if (p.LargestFiles.Count > 0)
+            {
+                _largestFiles.Clear();
+                _largestFiles.AddRange(p.LargestFiles);
+                ApplyLargestFileFilter();
+            }
+
             UpdateStatusDetails();
         });
 
@@ -119,10 +139,12 @@ public partial class MainWindow : Window
             FolderTree.ItemsSource = new[] { result.Root };
             FolderEmptyState.Visibility = Visibility.Collapsed;
 
+            _largestFiles.Clear();
             _largestFiles.AddRange(result.LargestFiles);
             ApplyLargestFileFilter();
 
             _latestFilesScanned = result.Root.FileCount;
+            _latestBytesScanned = result.Root.SizeBytes;
             _latestSkippedEntries = result.SkippedEntries;
             FilesScannedText.Text = result.Root.FileCount.ToString("N0");
             SkippedText.Text = result.SkippedEntries.ToString("N0");
@@ -135,7 +157,9 @@ public partial class MainWindow : Window
             StatusText.Text = "Scan cancelled";
             FolderEmptyState.Visibility = FolderTree.Items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             FilesEmptyTitle.Text = "Scan cancelled";
-            FilesEmptySubtitle.Text = "Start another scan when you are ready.";
+            FilesEmptySubtitle.Text = _largestFiles.Count > 0
+                ? "Partial largest-file results are still available."
+                : "Start another scan when you are ready.";
             FilesEmptyState.Visibility = _largestFiles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SetScanVisualState(ScanVisualState.Cancelled);
         }
@@ -144,8 +168,10 @@ public partial class MainWindow : Window
             StatusText.Text = "Scan failed";
             FolderEmptyState.Visibility = Visibility.Visible;
             FilesEmptyTitle.Text = "Scan could not complete";
-            FilesEmptySubtitle.Text = "Review the error and try again.";
-            FilesEmptyState.Visibility = Visibility.Visible;
+            FilesEmptySubtitle.Text = _largestFiles.Count > 0
+                ? "Partial largest-file results are still available."
+                : "Review the error and try again.";
+            FilesEmptyState.Visibility = _largestFiles.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             SetScanVisualState(ScanVisualState.Error);
             MessageBox.Show(this, ex.Message, "ArcSpace scan error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -178,6 +204,18 @@ public partial class MainWindow : Window
             DriveCombo.SelectedItem = null;
             SetScanPath(dialog.FolderName);
         }
+    }
+
+    private async void ScanFolderItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (FolderTree.SelectedItem is not ScanItem item || !item.IsDirectory)
+        {
+            return;
+        }
+
+        DriveCombo.SelectedItem = null;
+        SetScanPath(item.FullPath);
+        await StartScanAsync();
     }
 
     private void DriveCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -235,6 +273,7 @@ public partial class MainWindow : Window
         ScanButton.IsEnabled = !isScanning;
         StopButton.IsEnabled = isScanning;
         DriveCombo.IsEnabled = !isScanning;
+        ChooseFolderButton.IsEnabled = !isScanning;
         ScanActivityBar.Visibility = isScanning ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -284,7 +323,15 @@ public partial class MainWindow : Window
             ? $"{(int)elapsed.TotalHours:00}:{elapsed.Minutes:00}:{elapsed.Seconds:00}"
             : $"{elapsed.Minutes:00}:{elapsed.Seconds:00}";
 
-        StatusDetailsText.Text = $"{_latestFilesScanned:N0} files  ·  {_latestDirectoriesScanned:N0} folders  ·  {time}";
+        var analyzed = ScanItem.FormatBytes(_latestBytesScanned);
+        if (_scanStopwatch.IsRunning && elapsed.TotalSeconds > 0.25)
+        {
+            var filesPerSecond = _latestFilesScanned / elapsed.TotalSeconds;
+            StatusDetailsText.Text = $"{_latestFilesScanned:N0} files  ·  {analyzed}  ·  {filesPerSecond:N0} files/s  ·  {time}";
+            return;
+        }
+
+        StatusDetailsText.Text = $"{_latestFilesScanned:N0} files  ·  {_latestDirectoriesScanned:N0} folders  ·  {analyzed}  ·  {time}";
     }
 
     private void FilterAll_Click(object sender, RoutedEventArgs e) => SelectFileFilter(FilterAllButton, 0);
@@ -326,7 +373,14 @@ public partial class MainWindow : Window
         if (filtered.Count == 0 && _largestFiles.Count > 0)
         {
             FilesEmptyTitle.Text = "No files match this filter";
-            FilesEmptySubtitle.Text = "Try a lower size threshold.";
+            FilesEmptySubtitle.Text = _scanStopwatch.IsRunning
+                ? "Still scanning. Try a lower threshold or keep watching."
+                : "Try a lower size threshold.";
+        }
+        else if (filtered.Count == 0 && _scanStopwatch.IsRunning)
+        {
+            FilesEmptyTitle.Text = "Scanning drive…";
+            FilesEmptySubtitle.Text = "Largest files will appear here live as they are discovered.";
         }
         else if (filtered.Count == 0)
         {
