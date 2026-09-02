@@ -1,5 +1,3 @@
-using System.Collections.ObjectModel;
-
 namespace ArcSpace.Models;
 
 public sealed class ScanItem
@@ -10,7 +8,7 @@ public sealed class ScanItem
     public long FileCount { get; set; }
     public DateTime LastModified { get; init; }
     public bool IsDirectory { get; init; }
-    public ObservableCollection<ScanItem> Children { get; } = new();
+    public List<ScanItem> Children { get; } = [];
 
     public string SizeDisplay => FormatBytes(SizeBytes);
     public string FileCountDisplay => FileCount.ToString("N0");
