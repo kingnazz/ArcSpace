@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     private readonly List<ScanItem> _largestFiles = [];
     private readonly Stopwatch _scanStopwatch = new();
     private readonly DispatcherTimer _statusTimer;
+    private readonly Button? _chooseFolderButton;
     private CancellationTokenSource? _scanCancellation;
     private string _scanPath = string.Empty;
     private long _minimumFileSizeBytes;
@@ -27,6 +28,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        _chooseFolderButton = FindVisualChild<Button>(this, static button => Equals(button.Content, "Choose folder"));
         SetVersionLabel();
 
         _statusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
@@ -41,9 +43,40 @@ public partial class MainWindow : Window
     private void SetVersionLabel()
     {
         var version = typeof(MainWindow).Assembly.GetName().Version;
-        VersionText.Text = version is null
-            ? "ArcSpace"
-            : $"ArcSpace v{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
+        var versionText = version is null
+            ? "   ArcSpace"
+            : $"   ArcSpace v{version.Major}.{version.Minor}.{Math.Max(0, version.Build)}";
+
+        var footerVersion = FindVisualChild<TextBlock>(
+            this,
+            static text => text.Text.StartsWith("   ArcSpace v", StringComparison.Ordinal));
+
+        if (footerVersion is not null)
+        {
+            footerVersion.Text = versionText;
+        }
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject root, Func<T, bool> predicate)
+        where T : DependencyObject
+    {
+        var count = VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < count; i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T match && predicate(match))
+            {
+                return match;
+            }
+
+            var descendant = FindVisualChild(child, predicate);
+            if (descendant is not null)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 
     private void PopulateDrives()
@@ -206,18 +239,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void ScanFolderItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (FolderTree.SelectedItem is not ScanItem item || !item.IsDirectory)
-        {
-            return;
-        }
-
-        DriveCombo.SelectedItem = null;
-        SetScanPath(item.FullPath);
-        await StartScanAsync();
-    }
-
     private void DriveCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (DriveCombo.SelectedItem is DriveChoice drive)
@@ -273,7 +294,11 @@ public partial class MainWindow : Window
         ScanButton.IsEnabled = !isScanning;
         StopButton.IsEnabled = isScanning;
         DriveCombo.IsEnabled = !isScanning;
-        ChooseFolderButton.IsEnabled = !isScanning;
+        if (_chooseFolderButton is not null)
+        {
+            _chooseFolderButton.IsEnabled = !isScanning;
+        }
+
         ScanActivityBar.Visibility = isScanning ? Visibility.Visible : Visibility.Collapsed;
     }
 
