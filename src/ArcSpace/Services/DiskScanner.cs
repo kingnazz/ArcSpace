@@ -7,7 +7,7 @@ namespace ArcSpace.Services;
 public sealed class DiskScanner
 {
     private const int LargestFileLimit = 100;
-    private const int ProgressIntervalMilliseconds = 125;
+    private const int ProgressIntervalMilliseconds = 200;
 
     private long _filesScanned;
     private long _directoriesScanned;
@@ -27,7 +27,7 @@ public sealed class DiskScanner
 
             var normalizedPath = Path.GetFullPath(rootPath);
             var root = ScanDirectory(new DirectoryInfo(normalizedPath), progress, cancellationToken);
-            var largest = DrainLargestFiles();
+            var largest = SnapshotLargestFiles();
 
             ReportProgress(progress, normalizedPath, force: true);
 
@@ -176,22 +176,17 @@ public sealed class DiskScanner
             _directoriesScanned,
             _skippedEntries,
             _bytesScanned,
-            currentPath));
+            currentPath,
+            SnapshotLargestFiles()));
 
         _progressStopwatch.Restart();
     }
 
-    private IReadOnlyList<ScanItem> DrainLargestFiles()
-    {
-        var files = new List<ScanItem>(_largestFiles.Count);
-        while (_largestFiles.TryDequeue(out var item, out _))
-        {
-            files.Add(item);
-        }
-
-        files.Sort(static (a, b) => b.SizeBytes.CompareTo(a.SizeBytes));
-        return files;
-    }
+    private IReadOnlyList<ScanItem> SnapshotLargestFiles()
+        => _largestFiles.UnorderedItems
+            .Select(static item => item.Element)
+            .OrderByDescending(static item => item.SizeBytes)
+            .ToArray();
 
     private void ResetCounters()
     {
@@ -233,4 +228,5 @@ public sealed record ScanProgress(
     long DirectoriesScanned,
     long SkippedEntries,
     long BytesScanned,
-    string CurrentPath);
+    string CurrentPath,
+    IReadOnlyList<ScanItem> LargestFiles);
