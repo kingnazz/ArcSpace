@@ -1,6 +1,5 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using ArcSpace.Services;
@@ -12,15 +11,12 @@ public partial class MainWindow
     private readonly AppUpdateSettings _updateSettings = AppUpdateSettings.Load();
     private readonly GitHubUpdateService _updateService = new();
     private Button? _updatesButton;
-    private Button? _chooseFolderButton;
 
     protected override void OnContentRendered(EventArgs e)
     {
         base.OnContentRendered(e);
         InstallUpdateControls();
         InstallTechnicianShortcuts();
-        InstallLiveScanRate();
-        SyncVisibleVersionLabel();
 
         if (_updateSettings.CheckForUpdatesOnLaunch)
         {
@@ -58,24 +54,14 @@ public partial class MainWindow
 
     private void InstallTechnicianShortcuts()
     {
+        PreviewKeyDown -= MainWindow_PreviewKeyDown;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
         ScanButton.ToolTip = "Scan or rescan (F5)";
         StopButton.ToolTip = "Cancel the current scan (Esc)";
 
-        if (Content is not DependencyObject root)
-        {
-            return;
-        }
-
-        _chooseFolderButton = FindVisualChildren<Button>(root)
-            .FirstOrDefault(button => string.Equals(button.Content as string, "Choose folder", StringComparison.Ordinal));
-
         if (_chooseFolderButton is not null)
         {
             _chooseFolderButton.ToolTip = "Choose folder (Ctrl+O)";
-            _chooseFolderButton.SetBinding(
-                IsEnabledProperty,
-                new Binding(nameof(IsEnabled)) { Source = ScanButton, Mode = BindingMode.OneWay });
         }
     }
 
@@ -107,59 +93,6 @@ public partial class MainWindow
             _scanCancellation?.Cancel();
             StatusText.Text = "Stopping scan…";
             e.Handled = true;
-        }
-    }
-
-    private void InstallLiveScanRate()
-    {
-        _statusTimer.Tick += (_, _) =>
-        {
-            if (!_scanStopwatch.IsRunning || _scanStopwatch.Elapsed.TotalSeconds < 0.5)
-            {
-                return;
-            }
-
-            var filesPerSecond = _latestFilesScanned / _scanStopwatch.Elapsed.TotalSeconds;
-            StatusDetailsText.Text += $"  ·  {filesPerSecond:N0} files/s";
-        };
-    }
-
-    private void SyncVisibleVersionLabel()
-    {
-        if (Content is not DependencyObject root)
-        {
-            return;
-        }
-
-        var version = typeof(MainWindow).Assembly.GetName().Version;
-        if (version is null)
-        {
-            return;
-        }
-
-        var versionLabel = FindVisualChildren<TextBlock>(root)
-            .FirstOrDefault(text => text.Text.TrimStart().StartsWith("ArcSpace v", StringComparison.OrdinalIgnoreCase));
-
-        if (versionLabel is not null)
-        {
-            versionLabel.Text = $"   ArcSpace v{version.Major}.{version.Minor}.{version.Build}";
-        }
-    }
-
-    private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
-    {
-        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
-        {
-            var child = VisualTreeHelper.GetChild(root, index);
-            if (child is T match)
-            {
-                yield return match;
-            }
-
-            foreach (var descendant in FindVisualChildren<T>(child))
-            {
-                yield return descendant;
-            }
         }
     }
 
