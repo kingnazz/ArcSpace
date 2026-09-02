@@ -1,0 +1,43 @@
+name: Release ArcSpace
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore src/ArcSpace/ArcSpace.csproj
+
+      - name: Publish portable EXE
+        run: dotnet publish src/ArcSpace/ArcSpace.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+
+      - name: Verify release payload
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "publish/ArcSpace.exe")) {
+            throw "publish/ArcSpace.exe was not produced"
+          }
+          Get-FileHash "publish/ArcSpace.exe" -Algorithm SHA256 | Format-List
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" "publish/ArcSpace.exe" --title "ArcSpace ${{ github.ref_name }}" --generate-notes
