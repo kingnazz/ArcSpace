@@ -25,7 +25,7 @@ public sealed class UpdateSettingsWindow : Window
         Height = 330;
         ResizeMode = ResizeMode.NoResize;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
-        Background = (Brush)Application.Current.FindResource("AppBackgroundBrush");
+        Background = (Brush)Application.Current.FindResource("PageBackgroundBrush");
         FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
 
         var root = new Grid { Margin = new Thickness(24) };
