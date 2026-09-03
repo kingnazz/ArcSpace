@@ -23,7 +23,7 @@ public sealed class DiskScanner : IDiskScanner
     private readonly Stopwatch _progressStopwatch = new();
     private readonly Stopwatch _snapshotStopwatch = new();
     private readonly List<DirectoryNode> _directories = [];
-    private readonly List<DirectoryNode> _rootChildren = [];
+    private readonly List<LiveFolderState> _rootFolders = [];
 
     private long _filesScanned;
     private long _directoriesScanned;
@@ -48,18 +48,19 @@ public sealed class DiskScanner : IDiskScanner
         ResetCounters();
 
         var normalizedPath = Path.GetFullPath(rootPath);
-        var root = CreateRoot(normalizedPath);
+        var rootDirectory = new DirectoryInfo(normalizedPath);
+        var root = CreateRoot(rootDirectory);
         _root = root;
-        var pendingDirectories = new Stack<DirectoryNode>();
-        pendingDirectories.Push(root);
+        var pendingDirectories = new Stack<DirectoryWorkItem>();
+        pendingDirectories.Push(new DirectoryWorkItem(rootDirectory, root));
         var wasCancelled = false;
 
         try
         {
-            while (pendingDirectories.TryPop(out var directory))
+            while (pendingDirectories.TryPop(out var workItem))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                ScanDirectory(directory, pendingDirectories, progress, cancellationToken);
+                ScanDirectory(workItem, pendingDirectories, progress, cancellationToken);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -80,13 +81,14 @@ public sealed class DiskScanner : IDiskScanner
     }
 
     private void ScanDirectory(
-        DirectoryNode directory,
-        Stack<DirectoryNode> pendingDirectories,
+        DirectoryWorkItem workItem,
+        Stack<DirectoryWorkItem> pendingDirectories,
         IProgress<ScanProgress>? progress,
         CancellationToken cancellationToken)
     {
         _directoriesScanned++;
-        var directoryInfo = new DirectoryInfo(directory.Item.FullPath);
+        var directory = workItem.Node;
+        var directoryInfo = workItem.Directory;
 
         try
         {
@@ -108,12 +110,12 @@ public sealed class DiskScanner : IDiskScanner
                         var child = CreateChild(directory, childDirectory);
                         directory.Item.Children.Add(child.Item);
                         _directories.Add(child);
-                        if (directory.Parent is null)
+                        if (directory.Parent is null && child.LiveFolder is { } liveFolder)
                         {
-                            _rootChildren.Add(child);
+                            _rootFolders.Add(liveFolder);
                         }
 
-                        pendingDirectories.Push(child);
+                        pendingDirectories.Push(new DirectoryWorkItem(childDirectory, child));
                         ReportProgress(progress, entry);
                         continue;
                     }
@@ -129,10 +131,10 @@ public sealed class DiskScanner : IDiskScanner
                     _filesScanned++;
                     _bytesScanned += size;
 
-                    if (directory.TopLevelBranch is { } branch)
+                    if (directory.LiveFolder is { } liveFolder)
                     {
-                        branch.LiveBytes += size;
-                        branch.LiveFileCount++;
+                        liveFolder.SizeBytes += size;
+                        liveFolder.FileCount++;
                     }
 
                     TrackLargeFile(file, size);
@@ -168,16 +170,17 @@ public sealed class DiskScanner : IDiskScanner
         ReportProgress(progress, directoryInfo.FullName);
     }
 
-    private DirectoryNode CreateRoot(string normalizedPath)
+    private DirectoryNode CreateRoot(DirectoryInfo directory)
     {
         var root = new DirectoryNode(
             new ScanItem
             {
-                Name = GetDisplayName(normalizedPath),
-                FullPath = normalizedPath,
+                Name = GetDisplayName(directory.FullName),
+                FullPath = directory.FullName,
                 IsDirectory = true
             },
-            parent: null);
+            parent: null,
+            liveFolder: null);
 
         _directories.Add(root);
         return root;
@@ -185,14 +188,18 @@ public sealed class DiskScanner : IDiskScanner
 
     private static DirectoryNode CreateChild(DirectoryNode parent, DirectoryInfo directory)
     {
-        return new DirectoryNode(
-            new ScanItem
-            {
-                Name = directory.Name,
-                FullPath = directory.FullName,
-                IsDirectory = true
-            },
-            parent);
+        var item = new ScanItem
+        {
+            Name = directory.Name,
+            FullPath = directory.FullName,
+            IsDirectory = true
+        };
+
+        var liveFolder = parent.Parent is null
+            ? new LiveFolderState(item)
+            : parent.LiveFolder;
+
+        return new DirectoryNode(item, parent, liveFolder);
     }
 
     private void FinalizeTree()
@@ -208,14 +215,16 @@ public sealed class DiskScanner : IDiskScanner
                     : StringComparer.OrdinalIgnoreCase.Compare(left.Name, right.Name);
             });
 
-            directory.Item.SizeBytes = directory.DirectFileBytes + directory.ChildBytes;
-            directory.Item.FileCount = directory.DirectFileCount + directory.ChildFileCount;
-
-            if (directory.Parent is { } parent)
+            long sizeBytes = directory.DirectFileBytes;
+            long fileCount = directory.DirectFileCount;
+            foreach (var child in directory.Item.Children)
             {
-                parent.ChildBytes += directory.Item.SizeBytes;
-                parent.ChildFileCount += directory.Item.FileCount;
+                sizeBytes += child.SizeBytes;
+                fileCount += child.FileCount;
             }
+
+            directory.Item.SizeBytes = sizeBytes;
+            directory.Item.FileCount = fileCount;
         }
     }
 
@@ -296,7 +305,7 @@ public sealed class DiskScanner : IDiskScanner
             return [];
         }
 
-        if (_rootChildren.Count == 0)
+        if (_rootFolders.Count == 0)
         {
             if (_filesScanned == 0)
             {
@@ -313,24 +322,24 @@ public sealed class DiskScanner : IDiskScanner
             ];
         }
 
-        var largestFolders = new PriorityQueue<DirectoryNode, long>();
-        foreach (var directory in _rootChildren)
+        var largestFolders = new PriorityQueue<LiveFolderState, long>();
+        foreach (var directory in _rootFolders)
         {
-            if (directory.LiveFileCount == 0 && directory.LiveBytes == 0)
+            if (directory.FileCount == 0 && directory.SizeBytes == 0)
             {
                 continue;
             }
 
             if (largestFolders.Count < LiveFolderLimit)
             {
-                largestFolders.Enqueue(directory, directory.LiveBytes);
+                largestFolders.Enqueue(directory, directory.SizeBytes);
                 continue;
             }
 
-            if (largestFolders.TryPeek(out _, out var smallestSize) && directory.LiveBytes > smallestSize)
+            if (largestFolders.TryPeek(out _, out var smallestSize) && directory.SizeBytes > smallestSize)
             {
                 largestFolders.Dequeue();
-                largestFolders.Enqueue(directory, directory.LiveBytes);
+                largestFolders.Enqueue(directory, directory.SizeBytes);
             }
         }
 
@@ -340,8 +349,8 @@ public sealed class DiskScanner : IDiskScanner
             hotspots.Add(new FolderHotspot(
                 entry.Element.Item.Name,
                 entry.Element.Item.FullPath,
-                entry.Element.LiveBytes,
-                entry.Element.LiveFileCount));
+                entry.Element.SizeBytes,
+                entry.Element.FileCount));
         }
 
         hotspots.Sort(static (left, right) =>
@@ -374,7 +383,7 @@ public sealed class DiskScanner : IDiskScanner
         _bytesScanned = 0;
         _largestFiles = new PriorityQueue<ScanItem, long>();
         _directories.Clear();
-        _rootChildren.Clear();
+        _rootFolders.Clear();
         _root = null;
         _progressStopwatch.Restart();
         _snapshotStopwatch.Restart();
@@ -387,28 +396,37 @@ public sealed class DiskScanner : IDiskScanner
         return string.IsNullOrWhiteSpace(name) ? Path.GetPathRoot(path) ?? path : name;
     }
 
+    private readonly record struct DirectoryWorkItem(DirectoryInfo Directory, DirectoryNode Node);
+
     private sealed class DirectoryNode
     {
-        public DirectoryNode(ScanItem item, DirectoryNode? parent)
+        public DirectoryNode(
+            ScanItem item,
+            DirectoryNode? parent,
+            LiveFolderState? liveFolder)
         {
             Item = item;
             Parent = parent;
-            TopLevelBranch = parent is null
-                ? null
-                : parent.Parent is null
-                    ? this
-                    : parent.TopLevelBranch;
+            LiveFolder = liveFolder;
         }
 
         public ScanItem Item { get; }
         public DirectoryNode? Parent { get; }
-        public DirectoryNode? TopLevelBranch { get; }
+        public LiveFolderState? LiveFolder { get; }
         public long DirectFileBytes { get; set; }
         public long DirectFileCount { get; set; }
-        public long ChildBytes { get; set; }
-        public long ChildFileCount { get; set; }
-        public long LiveBytes { get; set; }
-        public long LiveFileCount { get; set; }
+    }
+
+    private sealed class LiveFolderState
+    {
+        public LiveFolderState(ScanItem item)
+        {
+            Item = item;
+        }
+
+        public ScanItem Item { get; }
+        public long SizeBytes { get; set; }
+        public long FileCount { get; set; }
     }
 }
 
