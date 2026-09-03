@@ -2,16 +2,17 @@
 
 ArcSpace is a lightweight Windows disk-space analyzer built for fast technician use, especially ConnectWise Control Backstage sessions.
 
-## V1 goals
+## Product goals
 
 - Single self-contained Windows x64 EXE
-- No installer, service, database, or persistent configuration
+- No installer, service, database, scan cache, or background agent
 - Scan an entire drive or a selected folder
-- Folder tree sorted largest-first
+- Show live top-level folder hotspots while a scan is still running
+- Show live Top 100 largest-file results
+- Preserve useful partial results when a scan is cancelled
+- Folder hierarchy sorted largest-first
 - File and folder totals with human-readable sizes
-- Top 100 largest files
 - Quick filters for files over 100 MB, 500 MB, and 1 GB
-- Cancel a running scan
 - Skip inaccessible paths and NTFS reparse points safely
 - Open locations in Explorer and copy paths
 - Confirmed permanent file/folder deletion
@@ -22,10 +23,10 @@ ArcSpace is a lightweight Windows disk-space analyzer built for fast technician 
 1. Download `ArcSpace.exe` from the latest GitHub Actions build artifact.
 2. Copy it into the remote machine's ConnectWise Control Backstage session.
 3. Run `ArcSpace.exe`.
-4. Scan the problem drive or folder.
+4. Scan the problem drive or folder and begin using partial results immediately.
 5. Close the app and delete the EXE when finished.
 
-ArcSpace writes no scan database or configuration files.
+ArcSpace writes no scan database or persistent scan cache. Update preferences, when changed, are stored in the current user's local application data.
 
 ## Build locally
 
@@ -50,4 +51,4 @@ dist\win-x64\ArcSpace.exe
 
 ## Scope
 
-ArcSpace V1 intentionally avoids treemaps, duplicate-file analysis, cleanup automation, shell extensions, and persistent scan indexes. The goal is to answer one technician question quickly: **what is using the disk space?**
+ArcSpace intentionally avoids treemaps, duplicate-file analysis, cleanup automation, shell extensions, and persistent scan indexes. The goal is to answer one technician question quickly: **what is using the disk space?**
