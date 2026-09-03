@@ -95,7 +95,7 @@
                                 </Grid.ColumnDefinitions>
                                 <ComboBox x:Name="DriveCombo" Grid.Column="0" MinWidth="220" Margin="0,0,8,0"
                                           DisplayMemberPath="Display" SelectionChanged="DriveCombo_SelectionChanged"/>
-                                <Button Grid.Column="1" Content="Choose folder" Style="{StaticResource BaseButtonStyle}"
+                                <Button x:Name="ChooseFolderButton" Grid.Column="1" Content="Choose folder" Style="{StaticResource BaseButtonStyle}"
                                         Click="ChooseFolder_Click" Margin="0,0,8,0"/>
                                 <Button x:Name="ScanButton" Grid.Column="2" Content="Scan now" Style="{StaticResource PrimaryButtonStyle}"
                                         Click="ScanButton_Click" MinWidth="92" Margin="0,0,8,0"/>
@@ -193,7 +193,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Folder breakdown" Style="{StaticResource SectionTitleStyle}"/>
-                        <TextBlock Text="Largest folders first, with file counts" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                        <TextBlock x:Name="FolderSubtitleText" Text="Largest folders first, with file counts" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                     </StackPanel>
                     <Grid Grid.Column="2">
                         <Grid.ColumnDefinitions>
@@ -202,7 +202,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Text="Largest files" Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock Text="Top 100 files discovered during this scan" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="FilesSubtitleText" Text="Top 100 files discovered during this scan" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
                             <Button x:Name="FilterAllButton" Content="All" Style="{StaticResource ActiveFilterButtonStyle}" Click="FilterAll_Click"/>
@@ -242,12 +242,14 @@
                             <Grid Grid.Row="1">
                                 <TreeView x:Name="FolderTree"
                                           Margin="12,8,12,12"
+                                          KeyDown="FolderTree_KeyDown"
+                                          PreviewMouseRightButtonDown="FolderTree_PreviewMouseRightButtonDown"
                                           VirtualizingStackPanel.IsVirtualizing="True"
                                           VirtualizingStackPanel.VirtualizationMode="Recycling">
                                     <TreeView.ContextMenu>
                                         <ContextMenu>
-                                            <MenuItem Header="Open in Explorer" Click="OpenFolderItem_Click"/>
-                                            <MenuItem Header="Copy path" Click="CopyFolderPath_Click"/>
+                                            <MenuItem Header="Open in Explorer" InputGestureText="Enter" Click="OpenFolderItem_Click"/>
+                                            <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopyFolderPath_Click"/>
                                             <Separator/>
                                             <MenuItem Header="Delete folder..." Click="DeleteFolder_Click" Foreground="{StaticResource DangerBrush}"/>
                                         </ContextMenu>
@@ -257,8 +259,8 @@
                                     <Border Width="48" Height="48" CornerRadius="24" Background="{StaticResource AccentSoftBrush}" HorizontalAlignment="Center">
                                         <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
-                                    <TextBlock Text="Nothing scanned yet" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                                    <TextBlock Text="Choose a drive or folder, then start a scan." FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                    <TextBlock x:Name="FolderEmptyTitle" Text="Nothing scanned yet" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
+                                    <TextBlock x:Name="FolderEmptySubtitle" Text="Choose a drive or folder, then start a scan." FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" TextAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
                         </Grid>
@@ -266,7 +268,10 @@
 
                     <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="0">
                         <Grid>
-                            <DataGrid x:Name="LargestFilesGrid" MouseDoubleClick="LargestFilesGrid_MouseDoubleClick">
+                            <DataGrid x:Name="LargestFilesGrid"
+                                      KeyDown="LargestFilesGrid_KeyDown"
+                                      PreviewMouseRightButtonDown="LargestFilesGrid_PreviewMouseRightButtonDown"
+                                      MouseDoubleClick="LargestFilesGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="FILE" Binding="{Binding Name}" Width="1.45*">
                                         <DataGridTextColumn.ElementStyle>
@@ -298,8 +303,8 @@
                                 </DataGrid.Columns>
                                 <DataGrid.ContextMenu>
                                     <ContextMenu>
-                                        <MenuItem Header="Show in Explorer" Click="ShowFileInExplorer_Click"/>
-                                        <MenuItem Header="Copy path" Click="CopyFilePath_Click"/>
+                                        <MenuItem Header="Show in Explorer" InputGestureText="Enter" Click="ShowFileInExplorer_Click"/>
+                                        <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopyFilePath_Click"/>
                                         <Separator/>
                                         <MenuItem Header="Delete file..." Click="DeleteFile_Click" Foreground="{StaticResource DangerBrush}"/>
                                     </ContextMenu>
@@ -310,7 +315,7 @@
                                     <TextBlock Text="&#xE7C3;" FontFamily="Segoe Fluent Icons" FontSize="19" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
                                 <TextBlock x:Name="FilesEmptyTitle" Text="Waiting for scan" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                                <TextBlock x:Name="FilesEmptySubtitle" Text="Large files will appear here automatically." FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                                <TextBlock x:Name="FilesEmptySubtitle" Text="Large files will appear here automatically." FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" TextAlignment="Center"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -330,8 +335,8 @@
                     <TextBlock x:Name="StatusText" Text="Ready to scan" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock x:Name="StatusDetailsText" Text="0 files  ·  0 folders  ·  00:00" FontSize="11.5" Foreground="{StaticResource TextTertiaryBrush}"/>
-                    <TextBlock Text="   ArcSpace v1.1" FontSize="11.5" Foreground="{StaticResource TextTertiaryBrush}"/>
+                    <TextBlock x:Name="StatusDetailsText" Text="0 files  ·  0 folders  ·  0 B  ·  00:00" FontSize="11.5" Foreground="{StaticResource TextTertiaryBrush}"/>
+                    <TextBlock x:Name="VersionText" Text="   ArcSpace" FontSize="11.5" Foreground="{StaticResource TextTertiaryBrush}"/>
                 </StackPanel>
             </Grid>
         </Border>
