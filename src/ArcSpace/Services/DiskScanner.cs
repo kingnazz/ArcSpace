@@ -110,9 +110,9 @@ public sealed class DiskScanner : IDiskScanner
                         var child = CreateChild(directory, childDirectory);
                         directory.Item.Children.Add(child.Item);
                         _directories.Add(child);
-                        if (directory.Parent is null && child.LiveFolder is { } liveFolder)
+                        if (directory.Parent is null && child.LiveFolder is { } rootFolder)
                         {
-                            _rootFolders.Add(liveFolder);
+                            _rootFolders.Add(rootFolder);
                         }
 
                         pendingDirectories.Push(new DirectoryWorkItem(childDirectory, child));
