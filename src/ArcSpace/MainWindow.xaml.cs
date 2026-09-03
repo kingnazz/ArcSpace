@@ -97,6 +97,7 @@ public partial class MainWindow : Window
         _latestBytesScanned = 0;
         _largestFiles.Clear();
         _liveFolderHotspots.Clear();
+        ClearSelectionDetails();
 
         FolderTree.ItemsSource = _liveFolderHotspots;
         SpaceMap.ItemsSource = _liveFolderHotspots;
@@ -410,9 +411,11 @@ public partial class MainWindow : Window
 
     private void SetScanPath(string path)
     {
+        RecordScanPathChange(_scanPath, path);
         _scanPath = path;
         PathText.Text = path;
         UpdateDiskSummary(path);
+        UpdateNavigationButtons();
     }
 
     private void UpdateDiskSummary(string path)
@@ -458,7 +461,9 @@ public partial class MainWindow : Window
         StopButton.Content = isScanning && _stopRequested ? "Stopping…" : "Stop";
         DriveCombo.IsEnabled = !isScanning;
         ChooseFolderButton.IsEnabled = !isScanning;
+        RefreshDrivesButton.IsEnabled = !isScanning;
         ScanActivityBar.Visibility = isScanning ? Visibility.Visible : Visibility.Collapsed;
+        UpdateNavigationButtons();
     }
 
     private void SetScanVisualState(ScanVisualState state)
@@ -559,11 +564,12 @@ public partial class MainWindow : Window
     {
         var selectedPath = (LargestFilesGrid.SelectedItem as ScanItem)?.FullPath;
         var filtered = _largestFiles
-            .Where(file => file.SizeBytes >= _minimumFileSizeBytes)
+            .Where(file => file.SizeBytes >= _minimumFileSizeBytes && MatchesLargestFileSearch(file))
             .OrderByDescending(file => file.SizeBytes)
             .ToList();
 
         LargestFilesGrid.ItemsSource = filtered;
+        UpdateFileResultCount(filtered.Count);
 
         if (!string.IsNullOrWhiteSpace(selectedPath))
         {

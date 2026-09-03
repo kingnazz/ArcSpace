@@ -4,15 +4,15 @@
         xmlns:controls="clr-namespace:ArcSpace.Controls"
         xmlns:models="clr-namespace:ArcSpace.Models"
         Title="ArcSpace"
-        Width="1420" Height="900"
-        MinWidth="1120" MinHeight="720"
+        Width="1360" Height="850"
+        MinWidth="960" MinHeight="660"
         WindowStartupLocation="CenterScreen"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True">
 
     <Window.Resources>
         <HierarchicalDataTemplate DataType="{x:Type models:ScanItem}" ItemsSource="{Binding Children}">
-            <Grid Height="30" MinWidth="620">
+            <Grid Height="30" MinWidth="450">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="92"/>
@@ -74,7 +74,7 @@
             <RowDefinition Height="68"/>
             <RowDefinition Height="56"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="29"/>
+            <RowDefinition Height="44"/>
         </Grid.RowDefinitions>
 
         <!-- Compact application header -->
@@ -86,6 +86,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -112,11 +113,13 @@
                 </StackPanel>
 
                 <TextBlock Grid.Column="1"
-                           Text="F5 scan  ·  Esc stop  ·  Enter open  ·  Ctrl+C copy path"
+                           Text="F5 scan  ·  Esc stop  ·  Ctrl+F filter files  ·  Ctrl+E export"
                            HorizontalAlignment="Center"
                            VerticalAlignment="Center"
                            Foreground="{StaticResource TextTertiaryBrush}"
-                           FontSize="10.5"/>
+                           FontSize="10.5"
+                           TextTrimming="CharacterEllipsis"
+                           Margin="12,0"/>
 
                 <Border x:Name="ScanStateBadge"
                         Grid.Column="2"
@@ -141,8 +144,17 @@
                     </StackPanel>
                 </Border>
 
-                <Button x:Name="UpdatesButton"
+                <Button x:Name="ExportButton"
                         Grid.Column="3"
+                        Content="Export"
+                        Style="{StaticResource HeaderButtonStyle}"
+                        Click="ExportButton_Click"
+                        ToolTip="Export current results to CSV (Ctrl+E)"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"/>
+
+                <Button x:Name="UpdatesButton"
+                        Grid.Column="4"
                         Content="Updates"
                         Style="{StaticResource HeaderButtonStyle}"
                         ToolTip="Update settings (Ctrl+U)"
@@ -163,24 +175,51 @@
 
                 <Grid Grid.Row="0" Margin="12,10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="245"/>
+                        <ColumnDefinition Width="36"/>
+                        <ColumnDefinition Width="210"/>
+                        <ColumnDefinition Width="36"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="10"/>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="14"/>
-                        <ColumnDefinition Width="285"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="250"/>
                     </Grid.ColumnDefinitions>
 
+                    <Button x:Name="BackButton"
+                            Grid.Column="0"
+                            Content="←"
+                            Style="{StaticResource ToolbarButtonStyle}"
+                            Click="BackButton_Click"
+                            Width="32"
+                            MinWidth="32"
+                            Padding="0"
+                            FontSize="16"
+                            IsEnabled="False"
+                            ToolTip="Previous scan target (Alt+Left)"
+                            Margin="0,0,4,0"/>
+
                     <ComboBox x:Name="DriveCombo"
-                              Grid.Column="0"
+                              Grid.Column="1"
                               DisplayMemberPath="Display"
                               SelectionChanged="DriveCombo_SelectionChanged"
-                              Margin="0,0,8,0"/>
+                              Margin="0,0,4,0"/>
+
+                    <Button x:Name="RefreshDrivesButton"
+                            Grid.Column="2"
+                            Content="↻"
+                            Style="{StaticResource ToolbarButtonStyle}"
+                            Click="RefreshDrivesButton_Click"
+                            Width="32"
+                            MinWidth="32"
+                            Padding="0"
+                            FontSize="16"
+                            ToolTip="Refresh drive list"
+                            Margin="0,0,8,0"/>
 
                     <Button x:Name="ChooseFolderButton"
-                            Grid.Column="1"
+                            Grid.Column="3"
                             Style="{StaticResource ToolbarButtonStyle}"
                             Click="ChooseFolder_Click"
                             Margin="0,0,7,0">
@@ -191,7 +230,7 @@
                     </Button>
 
                     <Button x:Name="ScanButton"
-                            Grid.Column="2"
+                            Grid.Column="4"
                             Style="{StaticResource PrimaryButtonStyle}"
                             Click="ScanButton_Click"
                             MinWidth="82"
@@ -204,7 +243,7 @@
                     </Button>
 
                     <Button x:Name="StopButton"
-                            Grid.Column="3"
+                            Grid.Column="5"
                             Content="Stop"
                             Style="{StaticResource DangerButtonStyle}"
                             Click="StopButton_Click"
@@ -212,7 +251,7 @@
                             MinWidth="72"
                             Height="38"/>
 
-                    <Border Grid.Column="5"
+                    <Border Grid.Column="7"
                             Background="{StaticResource SurfaceMutedBrush}"
                             BorderBrush="{StaticResource BorderStrongBrush}"
                             BorderThickness="1"
@@ -239,7 +278,7 @@
                         </Grid>
                     </Border>
 
-                    <StackPanel Grid.Column="7" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="9" VerticalAlignment="Center">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -362,16 +401,16 @@
         <!-- Analysis workspace -->
         <Grid Grid.Row="3" Margin="9">
             <Grid.RowDefinitions>
-                <RowDefinition Height="*" MinHeight="330"/>
+                <RowDefinition Height="*" MinHeight="280"/>
                 <RowDefinition Height="5"/>
-                <RowDefinition Height="205" MinHeight="130"/>
+                <RowDefinition Height="180" MinHeight="115"/>
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.35*" MinWidth="610"/>
+                    <ColumnDefinition Width="1.35*" MinWidth="480"/>
                     <ColumnDefinition Width="5"/>
-                    <ColumnDefinition Width="0.85*" MinWidth="390"/>
+                    <ColumnDefinition Width="0.85*" MinWidth="345"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Folder hierarchy -->
@@ -401,10 +440,17 @@
                                                Foreground="{StaticResource TextTertiaryBrush}"
                                                Margin="0,1,0,0"/>
                                 </StackPanel>
-                                <TextBlock Grid.Column="1"
-                                           Text="SIZE BARS SHOW % OF PARENT"
-                                           Style="{StaticResource EyebrowStyle}"
-                                           VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="SIZE BARS SHOW % OF PARENT"
+                                               Style="{StaticResource EyebrowStyle}"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+                                    <Button x:Name="CollapseFoldersButton"
+                                            Content="Collapse"
+                                            Style="{StaticResource HeaderButtonStyle}"
+                                            Click="CollapseFoldersButton_Click"
+                                            ToolTip="Collapse the folder hierarchy"/>
+                                </StackPanel>
                             </Grid>
                         </Border>
 
@@ -429,10 +475,12 @@
                         <Grid Grid.Row="2">
                             <TreeView x:Name="FolderTree"
                                       KeyDown="FolderTree_KeyDown"
+                                      SelectedItemChanged="FolderTree_SelectedItemChanged"
                                       PreviewMouseRightButtonDown="FolderTree_PreviewMouseRightButtonDown">
                                 <TreeView.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Open in Explorer" InputGestureText="Enter" Click="OpenFolderItem_Click"/>
+                                        <MenuItem Header="Scan this folder" InputGestureText="Ctrl+Enter" Click="ScanFolderItem_Click"/>
                                         <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopyFolderPath_Click"/>
                                         <Separator/>
                                         <MenuItem Header="Delete folder..." Click="DeleteFolder_Click" Foreground="{StaticResource DangerBrush}"/>
@@ -478,6 +526,7 @@
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="43"/>
+                            <RowDefinition Height="34"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
@@ -499,18 +548,43 @@
                                                Foreground="{StaticResource TextTertiaryBrush}"
                                                Margin="0,1,0,0"/>
                                 </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Button x:Name="FilterAllButton" Content="All" Style="{StaticResource ActiveFilterButtonStyle}" Click="FilterAll_Click"/>
-                                    <Button x:Name="Filter100Button" Content=">100 MB" Style="{StaticResource FilterButtonStyle}" Click="Filter100_Click"/>
-                                    <Button x:Name="Filter500Button" Content=">500 MB" Style="{StaticResource FilterButtonStyle}" Click="Filter500_Click"/>
-                                    <Button x:Name="Filter1GbButton" Content=">1 GB" Style="{StaticResource FilterButtonStyle}" Click="Filter1Gb_Click" Margin="0"/>
+                                <TextBlock x:Name="FileResultCountText"
+                                           Grid.Column="1"
+                                           Text="0 files"
+                                           Style="{StaticResource EyebrowStyle}"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Grid.Row="1"
+                                Background="{StaticResource SurfaceMutedBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1">
+                            <Grid Margin="8,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="122"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="FileSearchBox"
+                                         Grid.Column="0"
+                                         Style="{StaticResource SearchTextBoxStyle}"
+                                         Tag="Filter files…"
+                                         TextChanged="FileSearchBox_TextChanged"
+                                         ToolTip="Filter by file name or path (Ctrl+F)"
+                                         Margin="0,0,8,0"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                    <Button x:Name="FilterAllButton" Content="All" Style="{StaticResource ActiveFilterButtonStyle}" Click="FilterAll_Click" ToolTip="Show all Top 100 entries"/>
+                                    <Button x:Name="Filter100Button" Content="100M+" Style="{StaticResource FilterButtonStyle}" Click="Filter100_Click" ToolTip="Files larger than 100 MB"/>
+                                    <Button x:Name="Filter500Button" Content="500M+" Style="{StaticResource FilterButtonStyle}" Click="Filter500_Click" ToolTip="Files larger than 500 MB"/>
+                                    <Button x:Name="Filter1GbButton" Content="1G+" Style="{StaticResource FilterButtonStyle}" Click="Filter1Gb_Click" ToolTip="Files larger than 1 GB" Margin="0"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
 
-                        <Grid Grid.Row="1">
+                        <Grid Grid.Row="2">
                             <DataGrid x:Name="LargestFilesGrid"
                                       KeyDown="LargestFilesGrid_KeyDown"
+                                      SelectionChanged="LargestFilesGrid_SelectionChanged"
                                       PreviewMouseRightButtonDown="LargestFilesGrid_PreviewMouseRightButtonDown"
                                       MouseDoubleClick="LargestFilesGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
@@ -580,6 +654,7 @@
                                 <DataGrid.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Show in Explorer" InputGestureText="Enter" Click="ShowFileInExplorer_Click"/>
+                                        <MenuItem Header="Scan containing folder" InputGestureText="Ctrl+Enter" Click="ScanContainingFolder_Click"/>
                                         <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopyFilePath_Click"/>
                                         <Separator/>
                                         <MenuItem Header="Delete file..." Click="DeleteFile_Click" Foreground="{StaticResource DangerBrush}"/>
@@ -666,23 +741,37 @@
                     <controls:FolderTreemap x:Name="SpaceMap"
                                             Grid.Row="1"
                                             EmptyText="Start a scan to build the top-level space map."
-                                            ItemInvoked="SpaceMap_ItemInvoked"/>
+                                            ItemSelected="SpaceMap_ItemSelected"
+                                            ItemInvoked="SpaceMap_ItemInvoked">
+                        <controls:FolderTreemap.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Open in Explorer" InputGestureText="Enter" Click="OpenSpaceMapFolder_Click"/>
+                                <MenuItem Header="Scan this folder" InputGestureText="Ctrl+Enter" Click="ScanSpaceMapFolder_Click"/>
+                                <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopySpaceMapPath_Click"/>
+                            </ContextMenu>
+                        </controls:FolderTreemap.ContextMenu>
+                    </controls:FolderTreemap>
                 </Grid>
             </Border>
         </Grid>
 
-        <!-- Status bar -->
+        <!-- Status and selection details -->
         <Border Grid.Row="4"
                 Background="{StaticResource HeaderBackgroundBrush}"
                 BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="0,1,0,0">
             <Grid Margin="12,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="24"/>
+                    <RowDefinition Height="20"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock x:Name="StatusText"
+                           Grid.Row="0"
                            Grid.Column="0"
                            Text="Ready to scan"
                            FontSize="10.5"
@@ -690,17 +779,31 @@
                            TextTrimming="CharacterEllipsis"
                            VerticalAlignment="Center"/>
                 <TextBlock x:Name="StatusDetailsText"
+                           Grid.Row="0"
                            Grid.Column="1"
                            Text="0 files  ·  0 folders  ·  0 B  ·  00:00"
                            FontSize="10.5"
                            Foreground="{StaticResource TextTertiaryBrush}"
                            VerticalAlignment="Center"/>
                 <TextBlock x:Name="VersionText"
+                           Grid.Row="0"
                            Grid.Column="2"
                            Text="   ArcSpace"
                            FontSize="10.5"
                            Foreground="{StaticResource TextTertiaryBrush}"
                            VerticalAlignment="Center"/>
+                <Border Grid.Row="1"
+                        Grid.ColumnSpan="3"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,1,0,0">
+                    <TextBlock x:Name="SelectionText"
+                               Text="No item selected"
+                               FontFamily="Cascadia Mono, Consolas"
+                               FontSize="9.5"
+                               Foreground="{StaticResource TextTertiaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"/>
+                </Border>
             </Grid>
         </Border>
     </Grid>

@@ -14,8 +14,11 @@ ArcSpace is a lightweight Windows disk-space analyzer built for fast technician 
 - Compact top-level space map for visual hotspot discovery
 - File and folder totals with human-readable sizes
 - Quick filters for files over 100 MB, 500 MB, and 1 GB
+- Instant Top 100 file-name/path filtering
+- Explicit CSV export of current complete or partial results
 - Skip inaccessible paths and NTFS reparse points safely
 - Open locations in Explorer and copy paths
+- Scan a selected folder directly and navigate back through in-session targets
 - Confirmed permanent file/folder deletion
 - Disk used/free/total summary
 

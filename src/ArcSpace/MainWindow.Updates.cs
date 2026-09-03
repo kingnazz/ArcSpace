@@ -17,6 +17,7 @@ public partial class MainWindow
         base.OnContentRendered(e);
         InstallUpdateControls();
         InstallTechnicianShortcuts();
+        InstallRefinementControls();
         SyncVisibleVersionLabel();
 
         if (_updateSettings.CheckForUpdatesOnLaunch)
@@ -42,21 +43,62 @@ public partial class MainWindow
         ScanButton.ToolTip = "Scan or rescan (F5)";
         StopButton.ToolTip = "Cancel the current scan and keep partial results (Esc)";
         ChooseFolderButton.ToolTip = "Choose folder (Ctrl+O)";
-        FolderTree.ToolTip = "Enter: open folder · Ctrl+C: copy path";
-        LargestFilesGrid.ToolTip = "Enter: show in Explorer · Ctrl+C: copy path";
-        SpaceMap.ToolTip = "Double-click a tile to open that folder in Explorer";
+        BackButton.ToolTip = "Previous scan target (Alt+Left)";
+        RefreshDrivesButton.ToolTip = "Refresh the drive list";
+        ExportButton.ToolTip = "Export current folder and Top 100 file results (Ctrl+E)";
+        FileSearchBox.ToolTip = "Filter the Top 100 list by file name or path (Ctrl+F)";
+        FolderTree.ToolTip = "Enter: open · Ctrl+Enter: scan this folder · Ctrl+C: copy path";
+        LargestFilesGrid.ToolTip = "Enter: show in Explorer · Ctrl+Enter: scan containing folder · Ctrl+C: copy path";
+        SpaceMap.ToolTip = "Click: select · Enter: open · Ctrl+Enter: scan this folder";
     }
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (e.Key == Key.U && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        var modifiers = Keyboard.Modifiers;
+
+        if (e.Key == Key.F && modifiers.HasFlag(ModifierKeys.Control))
+        {
+            FocusLargestFileSearch();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.E && modifiers.HasFlag(ModifierKeys.Control))
+        {
+            ExportCurrentResults();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Left && modifiers.HasFlag(ModifierKeys.Alt) && BackButton.IsEnabled)
+        {
+            NavigateBack();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Enter && modifiers.HasFlag(ModifierKeys.Control) && !_isScanning)
+        {
+            _ = ScanSelectedLocationAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.C && modifiers.HasFlag(ModifierKeys.Control) && SpaceMap.IsKeyboardFocusWithin && SpaceMap.SelectedItem is not null)
+        {
+            CopyPath(SpaceMap.SelectedItem.FullPath);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.U && modifiers.HasFlag(ModifierKeys.Control))
         {
             OpenUpdateSettings();
             e.Handled = true;
             return;
         }
 
-        if (e.Key == Key.O && Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && ScanButton.IsEnabled)
+        if (e.Key == Key.O && modifiers.HasFlag(ModifierKeys.Control) && ScanButton.IsEnabled)
         {
             ChooseFolder_Click(this, new RoutedEventArgs());
             e.Handled = true;
@@ -66,6 +108,13 @@ public partial class MainWindow
         if (e.Key == Key.F5 && ScanButton.IsEnabled)
         {
             _ = StartScanAsync();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape && !StopButton.IsEnabled && FileSearchBox.IsKeyboardFocusWithin && FileSearchBox.Text.Length > 0)
+        {
+            FileSearchBox.Clear();
             e.Handled = true;
             return;
         }

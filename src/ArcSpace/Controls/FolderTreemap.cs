@@ -87,7 +87,20 @@ public sealed class FolderTreemap : FrameworkElement
         set => SetValue(EmptyTextProperty, value);
     }
 
+    public ScanItem? SelectedItem => _selectedItem;
+
+    public event EventHandler<TreemapItemEventArgs>? ItemSelected;
     public event EventHandler<TreemapItemEventArgs>? ItemInvoked;
+
+    public void SelectItem(ScanItem? item)
+    {
+        var match = item is null
+            ? null
+            : SnapshotItems().FirstOrDefault(candidate =>
+                ReferenceEquals(candidate, item) ||
+                string.Equals(candidate.FullPath, item.FullPath, StringComparison.OrdinalIgnoreCase));
+        SetSelectedItem(match, notify: false);
+    }
 
     protected override void OnRender(DrawingContext drawingContext)
     {
@@ -157,13 +170,40 @@ public sealed class FolderTreemap : FrameworkElement
         }
 
         Focus();
-        _selectedItem = item;
-        InvalidateVisual();
+        SetSelectedItem(item, notify: true);
         e.Handled = true;
 
         if (e.ClickCount >= 2)
         {
             ItemInvoked?.Invoke(this, new TreemapItemEventArgs(item));
+        }
+    }
+
+    protected override void OnMouseRightButtonDown(MouseButtonEventArgs e)
+    {
+        var item = FindItem(e.GetPosition(this));
+        if (item is not null)
+        {
+            Focus();
+            SetSelectedItem(item, notify: true);
+        }
+
+        base.OnMouseRightButtonDown(e);
+    }
+
+    private void SetSelectedItem(ScanItem? item, bool notify)
+    {
+        if (ReferenceEquals(item, _selectedItem))
+        {
+            return;
+        }
+
+        _selectedItem = item;
+        InvalidateVisual();
+
+        if (notify && item is not null)
+        {
+            ItemSelected?.Invoke(this, new TreemapItemEventArgs(item));
         }
     }
 
