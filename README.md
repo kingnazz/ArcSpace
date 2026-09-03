@@ -10,7 +10,8 @@ ArcSpace is a lightweight Windows disk-space analyzer built for fast technician 
 - Show live top-level folder hotspots while a scan is still running
 - Show live Top 100 largest-file results
 - Preserve useful partial results when a scan is cancelled
-- Folder hierarchy sorted largest-first
+- Folder hierarchy sorted largest-first with percentage-of-parent bars
+- Compact top-level space map for visual hotspot discovery
 - File and folder totals with human-readable sizes
 - Quick filters for files over 100 MB, 500 MB, and 1 GB
 - Skip inaccessible paths and NTFS reparse points safely
@@ -51,4 +52,4 @@ dist\win-x64\ArcSpace.exe
 
 ## Scope
 
-ArcSpace intentionally avoids treemaps, duplicate-file analysis, cleanup automation, shell extensions, and persistent scan indexes. The goal is to answer one technician question quickly: **what is using the disk space?**
+ArcSpace intentionally keeps visualization bounded to a compact top-level folder map and avoids a heavyweight file-by-file treemap, duplicate-file analysis, cleanup automation, shell extensions, and persistent scan indexes. The goal is to answer one technician question quickly: **what is using the disk space?**

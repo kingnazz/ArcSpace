@@ -1,288 +1,539 @@
 <Window x:Class="ArcSpace.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:ArcSpace.Controls"
         xmlns:models="clr-namespace:ArcSpace.Models"
         Title="ArcSpace"
-        Width="1280" Height="820"
-        MinWidth="1040" MinHeight="680"
-        WindowStartupLocation="CenterScreen">
+        Width="1420" Height="900"
+        MinWidth="1120" MinHeight="720"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True">
 
     <Window.Resources>
         <HierarchicalDataTemplate DataType="{x:Type models:ScanItem}" ItemsSource="{Binding Children}">
-            <Grid Height="36" Margin="0,1">
+            <Grid Height="30" MinWidth="620">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="92"/>
-                    <ColumnDefinition Width="74"/>
+                    <ColumnDefinition Width="132"/>
+                    <ColumnDefinition Width="78"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="14"
-                               Foreground="#5E6C84" VerticalAlignment="Center" Margin="2,0,8,0"/>
-                    <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,8,0">
+                    <TextBlock Text="&#xE8B7;"
+                               FontFamily="Segoe Fluent Icons"
+                               FontSize="13"
+                               Foreground="#F2C94C"
+                               VerticalAlignment="Center"
+                               Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding Name}"
+                               FontSize="11.5"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding FullPath}"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
-                <TextBlock Grid.Column="1" Text="{Binding SizeDisplay}" HorizontalAlignment="Right"
-                           VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}" FontWeight="SemiBold" Margin="0,0,12,0"/>
-                <TextBlock Grid.Column="2" Text="{Binding FileCountDisplay}" HorizontalAlignment="Right"
-                           VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding SizeDisplay}"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           FontWeight="SemiBold"
+                           FontSize="11.5"
+                           Margin="0,0,12,0"/>
+
+                <Grid Grid.Column="2" Margin="8,6,10,6">
+                    <ProgressBar Minimum="0" Maximum="100"
+                                 Value="{Binding UsagePercent}"
+                                 Style="{StaticResource UsageBarStyle}"/>
+                    <TextBlock Text="{Binding UsageDisplay}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="9.5"
+                               FontWeight="SemiBold"/>
+                </Grid>
+
+                <TextBlock Grid.Column="3"
+                           Text="{Binding FileCountDisplay}"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="11"
+                           Margin="0,0,10,0"/>
             </Grid>
         </HierarchicalDataTemplate>
     </Window.Resources>
 
-    <Grid>
+    <Grid Background="{StaticResource PageBackgroundBrush}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="44"/>
+            <RowDefinition Height="68"/>
+            <RowDefinition Height="56"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="29"/>
         </Grid.RowDefinitions>
 
-        <!-- Header -->
-        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1">
-            <Grid Margin="28,20,28,18">
+        <!-- Compact application header -->
+        <Border Grid.Row="0"
+                Background="{StaticResource HeaderBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="13,0">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <Border Width="36" Height="36" CornerRadius="9" Background="{StaticResource AccentBrush}" Margin="0,0,11,0">
-                            <TextBlock Text="&#xE7F8;" FontFamily="Segoe Fluent Icons" FontSize="17" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="ArcSpace" FontSize="23" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="Find what is consuming disk space. Fast." FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
-                        </StackPanel>
-                    </StackPanel>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="27" Height="27" CornerRadius="4" Background="{StaticResource AccentBrush}" Margin="0,0,9,0">
+                        <TextBlock Text="&#xE7F8;"
+                                   FontFamily="Segoe Fluent Icons"
+                                   FontSize="14"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="ArcSpace"
+                               FontSize="16"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="  /  DISK SPACE ANALYZER"
+                               FontSize="9.5"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextTertiaryBrush}"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
-                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource AccentBorderBrush}"
-                        BorderThickness="1" CornerRadius="16" Padding="11,6" VerticalAlignment="Center">
+
+                <TextBlock Grid.Column="1"
+                           Text="F5 scan  ·  Esc stop  ·  Enter open  ·  Ctrl+C copy path"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Foreground="{StaticResource TextTertiaryBrush}"
+                           FontSize="10.5"/>
+
+                <Border x:Name="ScanStateBadge"
+                        Grid.Column="2"
+                        Background="{StaticResource SuccessSoftBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="9,3"
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal">
-                        <Ellipse Width="7" Height="7" Fill="{StaticResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
-                        <TextBlock Text="PORTABLE TECHNICIAN UTILITY" FontSize="10.5" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+                        <Ellipse x:Name="StatusDot"
+                                 Width="6" Height="6"
+                                 Fill="{StaticResource SuccessBrush}"
+                                 VerticalAlignment="Center"
+                                 Margin="0,0,6,0"/>
+                        <TextBlock x:Name="ScanStateText"
+                                   Text="READY"
+                                   FontSize="9.5"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource SuccessBrush}"/>
                     </StackPanel>
+                </Border>
+
+                <Button x:Name="UpdatesButton"
+                        Grid.Column="3"
+                        Content="Updates"
+                        Style="{StaticResource HeaderButtonStyle}"
+                        ToolTip="Update settings (Ctrl+U)"
+                        VerticalAlignment="Center"/>
+            </Grid>
+        </Border>
+
+        <!-- Command bar -->
+        <Border Grid.Row="1"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="3"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="12,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="245"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="14"/>
+                        <ColumnDefinition Width="285"/>
+                    </Grid.ColumnDefinitions>
+
+                    <ComboBox x:Name="DriveCombo"
+                              Grid.Column="0"
+                              DisplayMemberPath="Display"
+                              SelectionChanged="DriveCombo_SelectionChanged"
+                              Margin="0,0,8,0"/>
+
+                    <Button x:Name="ChooseFolderButton"
+                            Grid.Column="1"
+                            Style="{StaticResource ToolbarButtonStyle}"
+                            Click="ChooseFolder_Click"
+                            Margin="0,0,7,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="13" Margin="0,0,7,0"/>
+                            <TextBlock Text="Select folder"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="ScanButton"
+                            Grid.Column="2"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Click="ScanButton_Click"
+                            MinWidth="82"
+                            Height="38"
+                            Margin="0,0,7,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE72C;" FontFamily="Segoe Fluent Icons" FontSize="13" Margin="0,0,7,0"/>
+                            <TextBlock Text="Scan"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Button x:Name="StopButton"
+                            Grid.Column="3"
+                            Content="Stop"
+                            Style="{StaticResource DangerButtonStyle}"
+                            Click="StopButton_Click"
+                            IsEnabled="False"
+                            MinWidth="72"
+                            Height="38"/>
+
+                    <Border Grid.Column="5"
+                            Background="{StaticResource SurfaceMutedBrush}"
+                            BorderBrush="{StaticResource BorderStrongBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="10,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE8B7;"
+                                       FontFamily="Segoe Fluent Icons"
+                                       FontSize="12"
+                                       Foreground="{StaticResource TextTertiaryBrush}"
+                                       Margin="0,0,7,0"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock x:Name="PathText"
+                                       Grid.Column="1"
+                                       FontFamily="Cascadia Mono, Consolas"
+                                       FontSize="10.5"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Column="7" VerticalAlignment="Center">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="DiskSummaryText"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock x:Name="DiskPercentText"
+                                       Grid.Column="1"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="#93C5FD"
+                                       Margin="10,0,0,0"/>
+                        </Grid>
+                        <ProgressBar x:Name="DiskUsageBar" Margin="0,7,0,0" Minimum="0" Maximum="100"/>
+                    </StackPanel>
+                </Grid>
+
+                <ProgressBar x:Name="ScanActivityBar"
+                             Grid.Row="1"
+                             Style="{StaticResource ScanProgressBarStyle}"
+                             IsIndeterminate="True"
+                             Visibility="Collapsed"/>
+            </Grid>
+        </Border>
+
+        <!-- Dense scan summary -->
+        <Border Grid.Row="2"
+                Background="{StaticResource SurfaceMutedBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1">
+            <Grid Margin="12,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Style="{StaticResource SummaryCellStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xEDA2;" FontFamily="Segoe Fluent Icons" FontSize="15" Foreground="#60A5FA" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="USED SPACE" Style="{StaticResource EyebrowStyle}"/>
+                            <TextBlock x:Name="UsedSpaceText" Text="—" Style="{StaticResource MetricValueStyle}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="1" Style="{StaticResource SummaryCellStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xE73E;" FontFamily="Segoe Fluent Icons" FontSize="15" Foreground="#34D399" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="FREE SPACE" Style="{StaticResource EyebrowStyle}"/>
+                            <TextBlock x:Name="FreeSpaceText" Text="—" Style="{StaticResource MetricValueStyle}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Style="{StaticResource SummaryCellStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xE9D9;" FontFamily="Segoe Fluent Icons" FontSize="15" Foreground="#A78BFA" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="ANALYZED" Style="{StaticResource EyebrowStyle}"/>
+                            <TextBlock x:Name="AnalyzedSpaceText" Text="0 B" Style="{StaticResource MetricValueStyle}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="3" Style="{StaticResource SummaryCellStyle}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xE8A5;" FontFamily="Segoe Fluent Icons" FontSize="15" Foreground="#FBBF24" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="DISCOVERED" Style="{StaticResource EyebrowStyle}"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock x:Name="FilesScannedText" Text="0" Style="{StaticResource MetricValueStyle}"/>
+                                <TextBlock Text=" files  ·  " FontSize="10.5" Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Bottom" Margin="3,0,0,2"/>
+                                <TextBlock x:Name="DirectoriesScannedText" Text="0 folders" FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Bottom" Margin="0,0,0,2"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="4" Style="{StaticResource SummaryCellStyle}" BorderThickness="0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="&#xE7BA;" FontFamily="Segoe Fluent Icons" FontSize="15" Foreground="#F87171" Margin="0,0,9,0" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="SKIPPED" Style="{StaticResource EyebrowStyle}"/>
+                            <TextBlock x:Name="SkippedText" Text="0" Style="{StaticResource MetricValueStyle}"/>
+                        </StackPanel>
+                    </Grid>
                 </Border>
             </Grid>
         </Border>
 
-        <!-- Main content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <Grid Margin="28,22,28,20">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*" MinHeight="385"/>
-                </Grid.RowDefinitions>
+        <!-- Analysis workspace -->
+        <Grid Grid.Row="3" Margin="9">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="330"/>
+                <RowDefinition Height="5"/>
+                <RowDefinition Height="205" MinHeight="130"/>
+            </Grid.RowDefinitions>
 
-                <!-- Scan target + disk summary -->
-                <Border Grid.Row="0" Style="{StaticResource CardStyle}" Padding="20" Margin="0,0,0,14">
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.35*" MinWidth="610"/>
+                    <ColumnDefinition Width="5"/>
+                    <ColumnDefinition Width="0.85*" MinWidth="390"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Folder hierarchy -->
+                <Border Grid.Column="0" Style="{StaticResource PaneStyle}">
                     <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.15*"/>
-                            <ColumnDefinition Width="28"/>
-                            <ColumnDefinition Width="0.85*"/>
-                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="43"/>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="SCAN TARGET" Style="{StaticResource EyebrowStyle}"/>
-                            <Grid Margin="0,9,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <ComboBox x:Name="DriveCombo" Grid.Column="0" MinWidth="220" Margin="0,0,8,0"
-                                          DisplayMemberPath="Display" SelectionChanged="DriveCombo_SelectionChanged"/>
-                                <Button x:Name="ChooseFolderButton" Grid.Column="1" Content="Choose folder" Style="{StaticResource BaseButtonStyle}"
-                                        Click="ChooseFolder_Click" Margin="0,0,8,0"/>
-                                <Button x:Name="ScanButton" Grid.Column="2" Content="Scan now" Style="{StaticResource PrimaryButtonStyle}"
-                                        Click="ScanButton_Click" MinWidth="92" Margin="0,0,8,0"/>
-                                <Button x:Name="StopButton" Grid.Column="3" Content="Stop" Style="{StaticResource DangerButtonStyle}"
-                                        Click="StopButton_Click" IsEnabled="False" MinWidth="72"/>
-                            </Grid>
-                            <Border Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1" CornerRadius="7" Margin="0,10,0,0" Padding="10,7">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="13" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,7,0"/>
-                                    <TextBlock x:Name="PathText" Grid.Column="1" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
-                                </Grid>
-                            </Border>
-                        </StackPanel>
-
-                        <Border Grid.Column="1" Width="1" Background="{StaticResource BorderBrush}" HorizontalAlignment="Center"/>
-
-                        <StackPanel Grid.Column="2">
-                            <Grid>
+                        <Border Grid.Row="0"
+                                Background="{StaticResource SurfaceRaisedBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1"
+                                CornerRadius="5,5,0,0">
+                            <Grid Margin="11,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Text="DISK HEALTH" Style="{StaticResource EyebrowStyle}"/>
-                                <Border x:Name="ScanStateBadge" Grid.Column="1" Background="{StaticResource SuccessSoftBrush}" CornerRadius="10" Padding="8,3">
-                                    <TextBlock x:Name="ScanStateText" Text="READY" FontSize="9.5" FontWeight="SemiBold" Foreground="{StaticResource SuccessBrush}"/>
-                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Folder hierarchy" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock x:Name="FolderSubtitleText"
+                                               Text="Largest folders first, with file counts"
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextTertiaryBrush}"
+                                               Margin="0,1,0,0"/>
+                                </StackPanel>
+                                <TextBlock Grid.Column="1"
+                                           Text="SIZE BARS SHOW % OF PARENT"
+                                           Style="{StaticResource EyebrowStyle}"
+                                           VerticalAlignment="Center"/>
                             </Grid>
-                            <Grid Margin="0,10,0,0">
+                        </Border>
+
+                        <Border Grid.Row="1"
+                                Background="{StaticResource SurfaceMutedBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1">
+                            <Grid Margin="17,0,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="92"/>
+                                    <ColumnDefinition Width="132"/>
+                                    <ColumnDefinition Width="78"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="DiskSummaryText" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock x:Name="DiskPercentText" Grid.Column="1" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="12,0,0,0"/>
+                                <TextBlock Grid.Column="0" Text="NAME" Style="{StaticResource EyebrowStyle}" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                <TextBlock Grid.Column="1" Text="SIZE" Style="{StaticResource EyebrowStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="2" Text="% OF PARENT" Style="{StaticResource EyebrowStyle}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="3" Text="FILES" Style="{StaticResource EyebrowStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0"/>
                             </Grid>
-                            <ProgressBar x:Name="DiskUsageBar" Margin="0,11,0,0" Minimum="0" Maximum="100"/>
-                            <ProgressBar x:Name="ScanActivityBar" Margin="0,7,0,0" Height="3" IsIndeterminate="True" Visibility="Collapsed"/>
-                        </StackPanel>
+                        </Border>
+
+                        <Grid Grid.Row="2">
+                            <TreeView x:Name="FolderTree"
+                                      KeyDown="FolderTree_KeyDown"
+                                      PreviewMouseRightButtonDown="FolderTree_PreviewMouseRightButtonDown">
+                                <TreeView.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Open in Explorer" InputGestureText="Enter" Click="OpenFolderItem_Click"/>
+                                        <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopyFolderPath_Click"/>
+                                        <Separator/>
+                                        <MenuItem Header="Delete folder..." Click="DeleteFolder_Click" Foreground="{StaticResource DangerBrush}"/>
+                                    </ContextMenu>
+                                </TreeView.ContextMenu>
+                            </TreeView>
+
+                            <StackPanel x:Name="FolderEmptyState"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        IsHitTestVisible="False">
+                                <TextBlock Text="&#xE8B7;"
+                                           FontFamily="Segoe Fluent Icons"
+                                           FontSize="24"
+                                           Foreground="{StaticResource TextTertiaryBrush}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="FolderEmptyTitle"
+                                           Text="Nothing scanned yet"
+                                           FontSize="12.5"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,8,0,0"/>
+                                <TextBlock x:Name="FolderEmptySubtitle"
+                                           Text="Choose a drive or folder, then start a scan."
+                                           FontSize="10.5"
+                                           Foreground="{StaticResource TextTertiaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,3,0,0"
+                                           TextAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
                     </Grid>
                 </Border>
 
-                <!-- Metrics -->
-                <Grid Grid.Row="1" Margin="0,0,0,14">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="10"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                <GridSplitter Grid.Column="1"
+                              Width="5"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch"
+                              Style="{StaticResource GridSplitterStyle}"/>
 
-                    <Border Grid.Column="0" Style="{StaticResource MetricCardStyle}">
-                        <StackPanel>
-                            <TextBlock Text="USED SPACE" Style="{StaticResource EyebrowStyle}"/>
-                            <TextBlock x:Name="UsedSpaceText" Text="—" Style="{StaticResource MetricValueStyle}"/>
-                            <TextBlock Text="On selected drive" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,3,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="2" Style="{StaticResource MetricCardStyle}">
-                        <StackPanel>
-                            <TextBlock Text="FREE SPACE" Style="{StaticResource EyebrowStyle}"/>
-                            <TextBlock x:Name="FreeSpaceText" Text="—" Style="{StaticResource MetricValueStyle}"/>
-                            <TextBlock Text="Available now" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,3,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="4" Style="{StaticResource MetricCardStyle}">
-                        <StackPanel>
-                            <TextBlock Text="FILES SCANNED" Style="{StaticResource EyebrowStyle}"/>
-                            <TextBlock x:Name="FilesScannedText" Text="0" Style="{StaticResource MetricValueStyle}"/>
-                            <TextBlock x:Name="DirectoriesScannedText" Text="0 folders" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,3,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Grid.Column="6" Style="{StaticResource MetricCardStyle}">
-                        <StackPanel>
-                            <TextBlock Text="SKIPPED" Style="{StaticResource EyebrowStyle}"/>
-                            <TextBlock x:Name="SkippedText" Text="0" Style="{StaticResource MetricValueStyle}"/>
-                            <TextBlock Text="Protected / reparse entries" FontSize="11" Foreground="{StaticResource TextTertiaryBrush}" Margin="0,3,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
+                <!-- Largest files -->
+                <Border Grid.Column="2" Style="{StaticResource PaneStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="43"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                <!-- Section headings -->
-                <Grid Grid.Row="2" Margin="2,0,2,9">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.08*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="0.92*"/>
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Folder breakdown" Style="{StaticResource SectionTitleStyle}"/>
-                        <TextBlock x:Name="FolderSubtitleText" Text="Largest folders first, with file counts" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <Grid Grid.Column="2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Text="Largest files" Style="{StaticResource SectionTitleStyle}"/>
-                            <TextBlock x:Name="FilesSubtitleText" Text="Top 100 files discovered during this scan" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Bottom">
-                            <Button x:Name="FilterAllButton" Content="All" Style="{StaticResource ActiveFilterButtonStyle}" Click="FilterAll_Click"/>
-                            <Button x:Name="Filter100Button" Content="> 100 MB" Style="{StaticResource FilterButtonStyle}" Click="Filter100_Click"/>
-                            <Button x:Name="Filter500Button" Content="> 500 MB" Style="{StaticResource FilterButtonStyle}" Click="Filter500_Click"/>
-                            <Button x:Name="Filter1GbButton" Content="> 1 GB" Style="{StaticResource FilterButtonStyle}" Click="Filter1Gb_Click" Margin="0"/>
-                        </StackPanel>
-                    </Grid>
-                </Grid>
-
-                <!-- Main analysis panes -->
-                <Grid Grid.Row="3">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="1.08*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="0.92*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Border Grid.Column="0" Style="{StaticResource CardStyle}" Padding="0">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="38"/>
-                                <RowDefinition Height="*"/>
-                            </Grid.RowDefinitions>
-                            <Border Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,0,0,1" CornerRadius="12,12,0,0">
-                                <Grid Margin="29,0,14,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="92"/>
-                                        <ColumnDefinition Width="74"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="FOLDER" Style="{StaticResource EyebrowStyle}" VerticalAlignment="Center"/>
-                                    <TextBlock Grid.Column="1" Text="SIZE" Style="{StaticResource EyebrowStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                                    <TextBlock Grid.Column="2" Text="FILES" Style="{StaticResource EyebrowStyle}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
-                                </Grid>
-                            </Border>
-                            <Grid Grid.Row="1">
-                                <TreeView x:Name="FolderTree"
-                                          Margin="12,8,12,12"
-                                          KeyDown="FolderTree_KeyDown"
-                                          PreviewMouseRightButtonDown="FolderTree_PreviewMouseRightButtonDown"
-                                          VirtualizingStackPanel.IsVirtualizing="True"
-                                          VirtualizingStackPanel.VirtualizationMode="Recycling">
-                                    <TreeView.ContextMenu>
-                                        <ContextMenu>
-                                            <MenuItem Header="Open in Explorer" InputGestureText="Enter" Click="OpenFolderItem_Click"/>
-                                            <MenuItem Header="Copy path" InputGestureText="Ctrl+C" Click="CopyFolderPath_Click"/>
-                                            <Separator/>
-                                            <MenuItem Header="Delete folder..." Click="DeleteFolder_Click" Foreground="{StaticResource DangerBrush}"/>
-                                        </ContextMenu>
-                                    </TreeView.ContextMenu>
-                                </TreeView>
-                                <StackPanel x:Name="FolderEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
-                                    <Border Width="48" Height="48" CornerRadius="24" Background="{StaticResource AccentSoftBrush}" HorizontalAlignment="Center">
-                                        <TextBlock Text="&#xE8B7;" FontFamily="Segoe Fluent Icons" FontSize="20" Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                    </Border>
-                                    <TextBlock x:Name="FolderEmptyTitle" Text="Nothing scanned yet" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                                    <TextBlock x:Name="FolderEmptySubtitle" Text="Choose a drive or folder, then start a scan." FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" TextAlignment="Center"/>
+                        <Border Grid.Row="0"
+                                Background="{StaticResource SurfaceRaisedBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1"
+                                CornerRadius="5,5,0,0">
+                            <Grid Margin="11,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Largest files" Style="{StaticResource SectionTitleStyle}"/>
+                                    <TextBlock x:Name="FilesSubtitleText"
+                                               Text="Top 100 files discovered during this scan"
+                                               FontSize="10"
+                                               Foreground="{StaticResource TextTertiaryBrush}"
+                                               Margin="0,1,0,0"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button x:Name="FilterAllButton" Content="All" Style="{StaticResource ActiveFilterButtonStyle}" Click="FilterAll_Click"/>
+                                    <Button x:Name="Filter100Button" Content=">100 MB" Style="{StaticResource FilterButtonStyle}" Click="Filter100_Click"/>
+                                    <Button x:Name="Filter500Button" Content=">500 MB" Style="{StaticResource FilterButtonStyle}" Click="Filter500_Click"/>
+                                    <Button x:Name="Filter1GbButton" Content=">1 GB" Style="{StaticResource FilterButtonStyle}" Click="Filter1Gb_Click" Margin="0"/>
                                 </StackPanel>
                             </Grid>
-                        </Grid>
-                    </Border>
+                        </Border>
 
-                    <Border Grid.Column="2" Style="{StaticResource CardStyle}" Padding="0">
-                        <Grid>
+                        <Grid Grid.Row="1">
                             <DataGrid x:Name="LargestFilesGrid"
                                       KeyDown="LargestFilesGrid_KeyDown"
                                       PreviewMouseRightButtonDown="LargestFilesGrid_PreviewMouseRightButtonDown"
                                       MouseDoubleClick="LargestFilesGrid_MouseDoubleClick">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="FILE" Binding="{Binding Name}" Width="1.45*">
-                                        <DataGridTextColumn.ElementStyle>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="FontWeight" Value="SemiBold"/>
-                                                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                            </Style>
-                                        </DataGridTextColumn.ElementStyle>
-                                    </DataGridTextColumn>
-                                    <DataGridTextColumn Header="SIZE" Binding="{Binding SizeDisplay}" Width="92">
+                                    <DataGridTemplateColumn Header="FILE" SortMemberPath="Name" Width="1.25*">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="&#xE8A5;"
+                                                               FontFamily="Segoe Fluent Icons"
+                                                               FontSize="12"
+                                                               Foreground="{StaticResource TextTertiaryBrush}"
+                                                               Margin="0,0,7,0"/>
+                                                    <TextBlock Text="{Binding Name}"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding FullPath}"
+                                                               VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTextColumn Header="SIZE" Binding="{Binding SizeDisplay}" SortMemberPath="SizeBytes" Width="92">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="FontWeight" Value="SemiBold"/>
@@ -291,16 +542,41 @@
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
-                                    <DataGridTextColumn Header="PATH" Binding="{Binding FullPath}" Width="2*">
+
+                                    <DataGridTemplateColumn Header="TYPE" SortMemberPath="ExtensionDisplay" Width="66">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{StaticResource AccentSoftBrush}"
+                                                        BorderBrush="{StaticResource AccentBorderBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        Padding="5,2"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding ExtensionDisplay}"
+                                                               FontSize="9"
+                                                               FontWeight="SemiBold"
+                                                               Foreground="#93C5FD"
+                                                               TextTrimming="CharacterEllipsis"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <DataGridTextColumn Header="FOLDER" Binding="{Binding ParentPathDisplay}" Width="1.15*">
                                         <DataGridTextColumn.ElementStyle>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                <Setter Property="FontFamily" Value="Cascadia Mono, Consolas"/>
+                                                <Setter Property="FontSize" Value="10"/>
                                                 <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                <Setter Property="ToolTip" Value="{Binding FullPath}"/>
                                                 <Setter Property="VerticalAlignment" Value="Center"/>
                                             </Style>
                                         </DataGridTextColumn.ElementStyle>
                                     </DataGridTextColumn>
                                 </DataGrid.Columns>
+
                                 <DataGrid.ContextMenu>
                                     <ContextMenu>
                                         <MenuItem Header="Show in Explorer" InputGestureText="Enter" Click="ShowFileInExplorer_Click"/>
@@ -310,34 +586,121 @@
                                     </ContextMenu>
                                 </DataGrid.ContextMenu>
                             </DataGrid>
-                            <StackPanel x:Name="FilesEmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
-                                <Border Width="48" Height="48" CornerRadius="24" Background="{StaticResource SurfaceMutedBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" HorizontalAlignment="Center">
-                                    <TextBlock Text="&#xE7C3;" FontFamily="Segoe Fluent Icons" FontSize="19" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                                <TextBlock x:Name="FilesEmptyTitle" Text="Waiting for scan" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"/>
-                                <TextBlock x:Name="FilesEmptySubtitle" Text="Large files will appear here automatically." FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" Margin="0,4,0,0" TextAlignment="Center"/>
+
+                            <StackPanel x:Name="FilesEmptyState"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        IsHitTestVisible="False">
+                                <TextBlock Text="&#xE8A5;"
+                                           FontFamily="Segoe Fluent Icons"
+                                           FontSize="24"
+                                           Foreground="{StaticResource TextTertiaryBrush}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock x:Name="FilesEmptyTitle"
+                                           Text="Waiting for scan"
+                                           FontSize="12.5"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,8,0,0"/>
+                                <TextBlock x:Name="FilesEmptySubtitle"
+                                           Text="Large files will appear here automatically."
+                                           FontSize="10.5"
+                                           Foreground="{StaticResource TextTertiaryBrush}"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,3,0,0"
+                                           TextAlignment="Center"/>
                             </StackPanel>
                         </Grid>
-                    </Border>
-                </Grid>
+                    </Grid>
+                </Border>
             </Grid>
-        </ScrollViewer>
+
+            <GridSplitter Grid.Row="1"
+                          Height="5"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch"
+                          Style="{StaticResource GridSplitterStyle}"/>
+
+            <!-- WinDirStat-style top-level space map -->
+            <Border Grid.Row="2" Style="{StaticResource PaneStyle}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="38"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0"
+                            Background="{StaticResource SurfaceRaisedBrush}"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="0,0,0,1"
+                            CornerRadius="5,5,0,0">
+                        <Grid Margin="11,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Space map" Style="{StaticResource SectionTitleStyle}"/>
+                                <TextBlock Text="  ·  largest top-level folders; relative area follows discovered bytes"
+                                           FontSize="10"
+                                           Foreground="{StaticResource TextTertiaryBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Border x:Name="SpaceMapStateBadge"
+                                    Grid.Column="1"
+                                    Background="{StaticResource SurfaceMutedBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="7,2"
+                                    VerticalAlignment="Center">
+                                <TextBlock x:Name="SpaceMapStateText"
+                                           Text="WAITING"
+                                           FontSize="9"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextTertiaryBrush}"/>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <controls:FolderTreemap x:Name="SpaceMap"
+                                            Grid.Row="1"
+                                            EmptyText="Start a scan to build the top-level space map."
+                                            ItemInvoked="SpaceMap_ItemInvoked"/>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Status bar -->
-        <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="28,10">
-            <Grid>
+        <Border Grid.Row="4"
+                Background="{StaticResource HeaderBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid Margin="12,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal">
-                    <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="{StaticResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock x:Name="StatusText" Text="Ready to scan" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock x:Name="StatusDetailsText" Text="0 files  ·  0 folders  ·  0 B  ·  00:00" FontSize="11.5" Foreground="{StaticResource TextTertiaryBrush}"/>
-                    <TextBlock x:Name="VersionText" Text="   ArcSpace" FontSize="11.5" Foreground="{StaticResource TextTertiaryBrush}"/>
-                </StackPanel>
+                <TextBlock x:Name="StatusText"
+                           Grid.Column="0"
+                           Text="Ready to scan"
+                           FontSize="10.5"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextTrimming="CharacterEllipsis"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="StatusDetailsText"
+                           Grid.Column="1"
+                           Text="0 files  ·  0 folders  ·  0 B  ·  00:00"
+                           FontSize="10.5"
+                           Foreground="{StaticResource TextTertiaryBrush}"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="VersionText"
+                           Grid.Column="2"
+                           Text="   ArcSpace"
+                           FontSize="10.5"
+                           Foreground="{StaticResource TextTertiaryBrush}"
+                           VerticalAlignment="Center"/>
             </Grid>
         </Border>
     </Grid>

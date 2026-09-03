@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using ArcSpace.Controls;
 using ArcSpace.Models;
 using ArcSpace.Services;
 using Microsoft.Win32;
@@ -98,10 +99,13 @@ public partial class MainWindow : Window
         _liveFolderHotspots.Clear();
 
         FolderTree.ItemsSource = _liveFolderHotspots;
+        SpaceMap.ItemsSource = _liveFolderHotspots;
+        SpaceMap.EmptyText = "Waiting for top-level folders to accumulate size…";
         LargestFilesGrid.ItemsSource = null;
         FilesScannedText.Text = "0";
         DirectoriesScannedText.Text = "0 folders";
         SkippedText.Text = "0";
+        AnalyzedSpaceText.Text = "0 B";
 
         FolderSubtitleText.Text = "Live top-level hotspots · partial totals";
         FilesSubtitleText.Text = "Top 100 files found so far · partial results";
@@ -135,10 +139,11 @@ public partial class MainWindow : Window
             FilesScannedText.Text = scanProgress.FilesScanned.ToString("N0");
             DirectoriesScannedText.Text = $"{scanProgress.DirectoriesScanned:N0} folders";
             SkippedText.Text = scanProgress.SkippedEntries.ToString("N0");
+            AnalyzedSpaceText.Text = ScanItem.FormatBytes(scanProgress.BytesScanned);
 
             if (scanProgress.Snapshot is not null)
             {
-                ApplyLiveFolderSnapshot(scanProgress.Snapshot.FolderHotspots);
+                ApplyLiveFolderSnapshot(scanProgress.Snapshot.FolderHotspots, scanProgress.BytesScanned);
                 ApplyLiveLargestFileSnapshot(scanProgress.Snapshot.LargestFiles);
             }
 
@@ -173,6 +178,7 @@ public partial class MainWindow : Window
             FolderEmptyTitle.Text = "Scan cancelled";
             FolderEmptySubtitle.Text = "Any partial folders discovered before cancellation remain available.";
             FolderEmptyState.Visibility = _liveFolderHotspots.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            SpaceMap.EmptyText = "No folder areas were measured before cancellation.";
             ApplyLargestFileFilter();
             StatusText.Text = "Scan cancelled  ·  partial results retained";
         }
@@ -190,6 +196,7 @@ public partial class MainWindow : Window
             FolderEmptyTitle.Text = "Scan could not continue";
             FolderEmptySubtitle.Text = "Any partial results already discovered are still available.";
             FolderEmptyState.Visibility = _liveFolderHotspots.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            SpaceMap.EmptyText = "No folder areas were measured before the scan stopped.";
             ApplyLargestFileFilter();
             StatusText.Text = "Scan failed  ·  partial results retained";
             MessageBox.Show(this, ex.Message, "ArcSpace scan error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -217,7 +224,9 @@ public partial class MainWindow : Window
         FilesScannedText.Text = result.Root.FileCount.ToString("N0");
         DirectoriesScannedText.Text = $"{result.DirectoriesScanned:N0} folders";
         SkippedText.Text = result.SkippedEntries.ToString("N0");
+        AnalyzedSpaceText.Text = result.Root.SizeDisplay;
 
+        UpdateUsagePercentages(result.Root);
         SetScanVisualState(result.WasCancelled ? ScanVisualState.Cancelled : ScanVisualState.Complete);
         FolderSubtitleText.Text = result.WasCancelled
             ? "Partial hierarchy preserved at cancellation"
@@ -227,6 +236,12 @@ public partial class MainWindow : Window
             : "Top 100 files discovered during this scan";
 
         FolderTree.ItemsSource = new[] { result.Root };
+        SpaceMap.ItemsSource = result.Root.Children.Any(child => child.SizeBytes > 0)
+            ? result.Root.Children
+            : new[] { result.Root };
+        SpaceMap.EmptyText = result.WasCancelled
+            ? "No folder areas were measured before cancellation."
+            : "No measurable folder areas were found.";
         FolderEmptyState.Visibility = Visibility.Collapsed;
         _liveFolderHotspots.Clear();
 
@@ -240,7 +255,7 @@ public partial class MainWindow : Window
             : $"Scan complete  ·  {result.Root.SizeDisplay} analyzed";
     }
 
-    private void ApplyLiveFolderSnapshot(IReadOnlyList<FolderHotspot> hotspots)
+    private void ApplyLiveFolderSnapshot(IReadOnlyList<FolderHotspot> hotspots, long rootSizeBytes)
     {
         var desiredPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var hotspot in hotspots)
@@ -288,7 +303,34 @@ public partial class MainWindow : Window
             }
         }
 
+        UpdateTopLevelUsagePercentages(_liveFolderHotspots, rootSizeBytes);
         FolderEmptyState.Visibility = _liveFolderHotspots.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static void UpdateUsagePercentages(ScanItem root)
+    {
+        root.UsagePercent = 100d;
+
+        var pending = new Stack<ScanItem>();
+        pending.Push(root);
+
+        while (pending.TryPop(out var parent))
+        {
+            foreach (var child in parent.Children)
+            {
+                child.UsagePercent = child.PercentOf(parent.SizeBytes);
+                pending.Push(child);
+            }
+        }
+    }
+
+    private static void UpdateTopLevelUsagePercentages(IReadOnlyList<ScanItem> items, long parentSize)
+    {
+        var effectiveParentSize = parentSize > 0 ? parentSize : items.Sum(item => item.SizeBytes);
+        foreach (var item in items)
+        {
+            item.UsagePercent = item.PercentOf(effectiveParentSize);
+        }
     }
 
     private static int IndexOfPath(IList<ScanItem> items, string path)
@@ -428,32 +470,47 @@ public partial class MainWindow : Window
             case ScanVisualState.Scanning:
                 ScanStateText.Text = "SCANNING · PARTIAL";
                 ScanStateBadge.Background = ResourceBrush("AccentSoftBrush");
-                ScanStateText.Foreground = ResourceBrush("AccentBrush");
-                StatusDot.Fill = ResourceBrush("AccentBrush");
+                ScanStateText.Foreground = ResourceBrush("AccentHoverBrush");
+                StatusDot.Fill = ResourceBrush("AccentHoverBrush");
+                SpaceMapStateText.Text = "LIVE · PARTIAL";
+                SpaceMapStateBadge.Background = ResourceBrush("AccentSoftBrush");
+                SpaceMapStateText.Foreground = ResourceBrush("AccentHoverBrush");
                 break;
             case ScanVisualState.Complete:
                 ScanStateText.Text = "COMPLETE";
                 ScanStateBadge.Background = ResourceBrush("SuccessSoftBrush");
                 ScanStateText.Foreground = ResourceBrush("SuccessBrush");
                 StatusDot.Fill = ResourceBrush("SuccessBrush");
+                SpaceMapStateText.Text = "COMPLETE";
+                SpaceMapStateBadge.Background = ResourceBrush("SuccessSoftBrush");
+                SpaceMapStateText.Foreground = ResourceBrush("SuccessBrush");
                 break;
             case ScanVisualState.Cancelled:
                 ScanStateText.Text = "CANCELLED · PARTIAL";
                 ScanStateBadge.Background = ResourceBrush("SurfaceMutedBrush");
                 ScanStateText.Foreground = ResourceBrush("TextSecondaryBrush");
                 StatusDot.Fill = ResourceBrush("TextTertiaryBrush");
+                SpaceMapStateText.Text = "PARTIAL";
+                SpaceMapStateBadge.Background = ResourceBrush("SurfaceMutedBrush");
+                SpaceMapStateText.Foreground = ResourceBrush("TextSecondaryBrush");
                 break;
             case ScanVisualState.Error:
                 ScanStateText.Text = "ERROR · PARTIAL";
                 ScanStateBadge.Background = ResourceBrush("DangerSoftBrush");
                 ScanStateText.Foreground = ResourceBrush("DangerBrush");
                 StatusDot.Fill = ResourceBrush("DangerBrush");
+                SpaceMapStateText.Text = "PARTIAL";
+                SpaceMapStateBadge.Background = ResourceBrush("DangerSoftBrush");
+                SpaceMapStateText.Foreground = ResourceBrush("DangerBrush");
                 break;
             default:
                 ScanStateText.Text = "READY";
                 ScanStateBadge.Background = ResourceBrush("SuccessSoftBrush");
                 ScanStateText.Foreground = ResourceBrush("SuccessBrush");
                 StatusDot.Fill = ResourceBrush("SuccessBrush");
+                SpaceMapStateText.Text = "WAITING";
+                SpaceMapStateBadge.Background = ResourceBrush("SurfaceMutedBrush");
+                SpaceMapStateText.Foreground = ResourceBrush("TextTertiaryBrush");
                 break;
         }
     }
@@ -683,6 +740,11 @@ public partial class MainWindow : Window
             MessageBoxButton.OK,
             MessageBoxImage.Information);
         return false;
+    }
+
+    private void SpaceMap_ItemInvoked(object? sender, TreemapItemEventArgs e)
+    {
+        OpenExplorer(e.Item.FullPath, selectFile: false);
     }
 
     private void LargestFilesGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)

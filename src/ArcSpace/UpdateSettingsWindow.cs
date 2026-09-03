@@ -55,10 +55,10 @@ public sealed class UpdateSettingsWindow : Window
 
         var options = new Border
         {
-            Background = Brushes.White,
+            Background = (Brush)Application.Current.FindResource("SurfaceBrush"),
             BorderBrush = (Brush)Application.Current.FindResource("BorderBrush"),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10),
+            CornerRadius = new CornerRadius(6),
             Padding = new Thickness(16)
         };
         var optionStack = new StackPanel();
@@ -67,13 +67,15 @@ public sealed class UpdateSettingsWindow : Window
             Content = "Check for updates when ArcSpace starts",
             IsChecked = _settings.CheckForUpdatesOnLaunch,
             FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)Application.Current.FindResource("TextPrimaryBrush"),
             Margin = new Thickness(0, 0, 0, 13)
         };
         _autoInstall = new CheckBox
         {
             Content = "Automatically download and install updates",
             IsChecked = _settings.AutoInstallUpdates,
-            FontWeight = FontWeights.SemiBold
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)Application.Current.FindResource("TextPrimaryBrush")
         };
         optionStack.Children.Add(_checkOnLaunch);
         optionStack.Children.Add(_autoInstall);

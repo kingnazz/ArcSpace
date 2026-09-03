@@ -27,30 +27,13 @@ public partial class MainWindow
 
     private void InstallUpdateControls()
     {
-        if (Content is Grid root && _updatesButton is null)
+        if (_updatesButton is not null)
         {
-            _updatesButton = new Button
-            {
-                Content = "Updates",
-                ToolTip = "Update settings (Ctrl+U)",
-                Height = 26,
-                MinWidth = 68,
-                Padding = new Thickness(9, 2, 9, 2),
-                FontSize = 10.5,
-                FontWeight = FontWeights.SemiBold,
-                HorizontalAlignment = HorizontalAlignment.Right,
-                VerticalAlignment = VerticalAlignment.Center,
-                Margin = new Thickness(0, 0, 285, 0),
-                Background = Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                Foreground = (Brush)FindResource("TextSecondaryBrush"),
-                Cursor = Cursors.Hand
-            };
-            _updatesButton.Click += (_, _) => OpenUpdateSettings();
-            Grid.SetRow(_updatesButton, 2);
-            Panel.SetZIndex(_updatesButton, 20);
-            root.Children.Add(_updatesButton);
+            return;
         }
+
+        _updatesButton = UpdatesButton;
+        _updatesButton.Click += (_, _) => OpenUpdateSettings();
     }
 
     private void InstallTechnicianShortcuts()
@@ -61,6 +44,7 @@ public partial class MainWindow
         ChooseFolderButton.ToolTip = "Choose folder (Ctrl+O)";
         FolderTree.ToolTip = "Enter: open folder · Ctrl+C: copy path";
         LargestFilesGrid.ToolTip = "Enter: show in Explorer · Ctrl+C: copy path";
+        SpaceMap.ToolTip = "Double-click a tile to open that folder in Explorer";
     }
 
     private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
@@ -127,7 +111,7 @@ public partial class MainWindow
             if (_updatesButton is not null)
             {
                 _updatesButton.Content = $"Update {update.TagName}";
-                _updatesButton.Foreground = (Brush)FindResource("AccentBrush");
+                _updatesButton.Foreground = (Brush)FindResource("AccentHoverBrush");
             }
 
             if (!_updateSettings.AutoInstallUpdates)
